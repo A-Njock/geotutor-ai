@@ -1,8 +1,5 @@
-[phases.setup]
-nixPkgs = ["nodejs_20"]
-
-[phases.install]
-cmds = ["pnpm install"]
+# Nixpacks config for Railway
+# Let Railway detect Node.js and pnpm automatically
 
 [phases.build]
 cmds = ["pnpm exec vite build"]
