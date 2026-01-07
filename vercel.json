@@ -1,23 +1,8 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "geotutor/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist/public"
-            }
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "/geotutor/$1"
-        }
-    ],
+    "$schema": "https://openapi.vercel.sh/vercel.json",
     "buildCommand": "cd geotutor && pnpm install && pnpm build",
-    "outputDirectory": "geotutor/dist/public",
-    "env": {
-        "VITE_API_URL": "@vite_api_url"
-    }
+    "devCommand": "cd geotutor && pnpm dev",
+    "installCommand": "cd geotutor && pnpm install",
+    "framework": null,
+    "outputDirectory": "geotutor/dist/public"
 }
