@@ -1,8 +1,7 @@
 {
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "buildCommand": "cd geotutor && pnpm install && pnpm build",
-    "devCommand": "cd geotutor && pnpm dev",
-    "installCommand": "cd geotutor && pnpm install",
-    "framework": null,
-    "outputDirectory": "geotutor/dist/public"
+    "framework": "vite",
+    "buildCommand": "pnpm install && pnpm build",
+    "outputDirectory": "dist/public",
+    "installCommand": "pnpm install",
+    "cwd": "geotutor"
 }
