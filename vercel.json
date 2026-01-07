@@ -1,0 +1,23 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "geotutor/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist/public"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/geotutor/$1"
+        }
+    ],
+    "buildCommand": "cd geotutor && pnpm install && pnpm build",
+    "outputDirectory": "geotutor/dist/public",
+    "env": {
+        "VITE_API_URL": "@vite_api_url"
+    }
+}

@@ -1,0 +1,16 @@
+langchain
+langgraph
+chromadb
+unstructured
+streamlit
+python-dotenv
+langchain-community
+langchain-openai
+langchain-google-genai
+pandas
+numpy
+tiktoken
+pymupdf
+layoutparser
+torch
+torchvision

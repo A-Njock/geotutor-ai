@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: geotech-llm
+Version: 0.1.0
+Summary: Advanced Geotechnical Engineering AI compliant agent
+Author-email: User <user@example.com>
+Requires-Python: >=3.10
+Requires-Dist: langchain
+Requires-Dist: langgraph
+Requires-Dist: chromadb
+Requires-Dist: unstructured
+Requires-Dist: streamlit
+Requires-Dist: python-dotenv
+Requires-Dist: langchain-community
+Requires-Dist: langchain-openai
+Requires-Dist: langchain-google-genai
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: tiktoken
+Requires-Dist: pymupdf
+Requires-Dist: layoutparser
+Requires-Dist: torch
+Requires-Dist: torchvision
