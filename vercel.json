@@ -1,7 +1,0 @@
-{
-    "framework": "vite",
-    "buildCommand": "pnpm install && pnpm build",
-    "outputDirectory": "dist/public",
-    "installCommand": "pnpm install",
-    "cwd": "geotutor"
-}
