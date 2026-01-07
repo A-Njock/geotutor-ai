@@ -1,0 +1,5 @@
+[phases.build]
+cmds = ["pnpm install", "pnpm exec vite build"]
+
+[start]
+cmd = "pnpm exec tsx server/_core/index.ts"
