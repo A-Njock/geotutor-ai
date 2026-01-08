@@ -66,25 +66,44 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
-        <div className="max-w-md text-center space-y-8">
-          <div className="space-y-4">
-            <GeoTutorLogo className="w-16 h-16 mx-auto" />
-            <h1 className="text-4xl font-bold text-white">GeoTutor</h1>
-            <p className="text-xl text-slate-300">
-              AI-Powered Geotechnical Engineering Learning
+    // Check if guest session exists
+    const isGuest = localStorage.getItem("geotutor-guest-session");
+    if (isGuest) {
+      // Guest user, continue to main app by not returning early
+    } else {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
+          <div className="max-w-md text-center space-y-8">
+            <div className="space-y-4">
+              <GeoTutorLogo className="w-16 h-16 mx-auto" />
+              <h1 className="text-4xl font-bold text-white">GeoTutor</h1>
+              <p className="text-xl text-slate-300">
+                AI-Powered Geotechnical Engineering Learning
+              </p>
+            </div>
+            <p className="text-slate-400">
+              Get detailed, AI-powered explanations with visual aids to enhance your understanding of geotechnical engineering concepts.
             </p>
+            {getLoginUrl() ? (
+              <Button size="lg" onClick={() => (window.location.href = getLoginUrl())} className="w-full">
+                Sign In to Start Learning
+              </Button>
+            ) : null}
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => {
+                localStorage.setItem("geotutor-guest-session", "true");
+                window.location.reload();
+              }}
+              className="w-full text-slate-300 border-slate-600 hover:bg-slate-700"
+            >
+              Continue as Guest
+            </Button>
           </div>
-          <p className="text-slate-400">
-            Get detailed, AI-powered explanations with visual aids to enhance your understanding of geotechnical engineering concepts.
-          </p>
-          <Button size="lg" onClick={() => (window.location.href = getLoginUrl())} className="w-full">
-            Sign In to Start Learning
-          </Button>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   const handleAsk = async () => {
