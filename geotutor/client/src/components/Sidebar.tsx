@@ -24,8 +24,11 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
     const [showCodeDialog, setShowCodeDialog] = useState(false);
     const [accessCode, setAccessCode] = useState("");
 
-    const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery();
-    const { data: recentTasks, isLoading: tasksLoading } = trpc.qa.listRecent.useQuery({ limit: 10 });
+    // Check if user is a guest (skip auth-required queries for guests)
+    const isGuestSession = typeof window !== 'undefined' && localStorage.getItem("geotutor-guest-session");
+
+    const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery(undefined, { enabled: !isGuestSession });
+    const { data: recentTasks, isLoading: tasksLoading } = trpc.qa.getHistory.useQuery(undefined, { enabled: !isGuestSession });
 
     const handleModeSwitch = (mode: "student" | "teacher") => {
         if (mode === "teacher") {
