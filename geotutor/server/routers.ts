@@ -110,7 +110,7 @@ export const appRouter = router({
 
   // Q&A Router
   qa: router({
-    ask: protectedProcedure
+    ask: publicProcedure
       .input(
         z.object({
           questionText: z.string().min(10, "Question must be at least 10 characters"),
@@ -119,9 +119,10 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        // Create question record
+        // Create question record (use userId 0 for guest users)
+        const userId = ctx.user?.id ?? 0;
         const questionId = await db.createQuestion({
-          userId: ctx.user.id,
+          userId,
           questionText: input.questionText,
           includeVisual: input.includeVisual,
           visualType: input.visualType,
@@ -205,7 +206,7 @@ export const appRouter = router({
         if (input.includeVisual && input.visualType) {
           try {
             visualUrl = await generateVisual(input.questionText, input.visualType);
-            visualKey = `visuals/${ctx.user.id}/${nanoid()}.png`;
+            visualKey = `visuals/${userId}/${nanoid()}.png`;
           } catch (error) {
             console.error("Failed to generate visual:", error);
           }

@@ -219,7 +219,7 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div>
+                        <div className="space-y-2">
                             <Label htmlFor="access-code">Access Code</Label>
                             <Input
                                 id="access-code"
