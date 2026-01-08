@@ -26,3 +26,6 @@ tiktoken>=0.5.0
 
 # HTTP
 requests>=2.31.0
+
+# Visualization
+matplotlib>=3.7.0
