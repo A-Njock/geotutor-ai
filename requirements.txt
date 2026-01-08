@@ -29,3 +29,9 @@ requests>=2.31.0
 
 # Visualization
 matplotlib>=3.7.0
+
+# Document creation
+python-docx>=0.8.11
+
+# OpenAI SDK
+openai>=1.0.0
