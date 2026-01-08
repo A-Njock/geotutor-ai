@@ -121,12 +121,20 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         // Create question record (use userId 0 for guest users)
         const userId = ctx.user?.id ?? 0;
-        const questionId = await db.createQuestion({
-          userId,
-          questionText: input.questionText,
-          includeVisual: input.includeVisual,
-          visualType: input.visualType,
-        });
+        let questionId: number | null = null;
+        let dbAvailable = true;
+
+        try {
+          questionId = await db.createQuestion({
+            userId,
+            questionText: input.questionText,
+            includeVisual: input.includeVisual,
+            visualType: input.visualType,
+          });
+        } catch (dbError) {
+          console.warn("[Q&A] Database unavailable, operating in stateless mode:", dbError);
+          dbAvailable = false;
+        }
 
         // Generate AI answer with visual-type-specific instructions
         let systemPrompt = "You are an expert geotechnical engineering professor. Provide detailed, accurate, and pedagogically sound explanations to student questions. Use clear language, include relevant formulas when appropriate, and explain concepts step-by-step. Format your response in markdown.";
@@ -212,17 +220,24 @@ export const appRouter = router({
           }
         }
 
-        // Save answer
-        const answerId = await db.createAnswer({
-          questionId,
-          answerText,
-          visualUrl,
-          visualKey,
-        });
+        // Save answer (only if database is available)
+        let answerId: number | null = null;
+        if (dbAvailable && questionId !== null) {
+          try {
+            answerId = await db.createAnswer({
+              questionId,
+              answerText,
+              visualUrl,
+              visualKey,
+            });
+          } catch (dbError) {
+            console.warn("[Q&A] Failed to save answer to database:", dbError);
+          }
+        }
 
         return {
-          questionId,
-          answerId,
+          questionId: questionId ?? -1,
+          answerId: answerId ?? -1,
           answerText,
           visualUrl,
         };
