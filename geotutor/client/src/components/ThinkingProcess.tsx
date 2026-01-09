@@ -76,20 +76,32 @@ export function ThinkingProcess({ isActive, events, className }: ThinkingProcess
     // Track which stages are complete
     const [completedStages, setCompletedStages] = useState<Set<string>>(new Set());
     const [currentStage, setCurrentStage] = useState<string | null>(null);
-    const [agentStatuses, setAgentStatuses] = useState<Record<string, { status: string; detail?: string }>>({});
+    // Track agent statuses PER STAGE to avoid cross-stage pollution
+    const [stageAgentStatuses, setStageAgentStatuses] = useState<Record<string, Record<string, { status: string; detail?: string }>>>({});
 
     // Process events to update state
     useEffect(() => {
         const newCompleted = new Set<string>();
-        const newAgentStatuses: Record<string, { status: string; detail?: string }> = {};
+        // Map: stage -> { agent -> status }
+        const newStageAgents: Record<string, Record<string, { status: string; detail?: string }>> = {};
         let lastStage: string | null = null;
+        let hasResult = false;
 
         for (const event of events) {
+            if (event.type === "result") {
+                hasResult = true;
+            }
+
             if (event.type === "progress" && event.stage) {
                 lastStage = event.stage;
 
+                // Initialize stage if needed
+                if (!newStageAgents[event.stage]) {
+                    newStageAgents[event.stage] = {};
+                }
+
                 if (event.agent && event.agent !== "system") {
-                    newAgentStatuses[event.agent] = {
+                    newStageAgents[event.stage][event.agent] = {
                         status: event.status || "started",
                         detail: event.detail,
                     };
@@ -101,9 +113,21 @@ export function ThinkingProcess({ isActive, events, className }: ThinkingProcess
             }
         }
 
+        // If we got a result, mark all stages as complete
+        if (hasResult) {
+            const allStages = ["retrieving", "collecting", "ranking", "synthesizing", "reviewing"];
+            allStages.forEach(s => newCompleted.add(s));
+            // Also mark all agents in each stage as done
+            for (const stageKey of Object.keys(newStageAgents)) {
+                for (const agentKey of Object.keys(newStageAgents[stageKey])) {
+                    newStageAgents[stageKey][agentKey].status = "done";
+                }
+            }
+        }
+
         setCompletedStages(newCompleted);
-        setCurrentStage(lastStage);
-        setAgentStatuses(newAgentStatuses);
+        setCurrentStage(hasResult ? null : lastStage);
+        setStageAgentStatuses(newStageAgents);
     }, [events]);
 
     if (!isActive && events.length === 0) {
@@ -175,18 +199,12 @@ export function ThinkingProcess({ isActive, events, className }: ThinkingProcess
                                 </div>
 
                                 {/* Agent pills for current stage */}
-                                {(isCurrent || isComplete) && (
+                                {(isCurrent || isComplete) && stageAgentStatuses[stageKey] && (
                                     <div className="flex flex-wrap gap-1 mt-1">
-                                        {Object.entries(agentStatuses)
-                                            .filter(([agent]) => {
-                                                // Filter agents relevant to this stage
-                                                const event = events.find(
-                                                    e => e.type === "progress" && e.stage === stageKey && e.agent === agent
-                                                );
-                                                return !!event;
-                                            })
-                                            .map(([agent, { status }]) => {
+                                        {Object.entries(stageAgentStatuses[stageKey])
+                                            .map(([agent, agentStatus]) => {
                                                 const colorClass = AGENT_COLORS[agent] || AGENT_COLORS.system;
+                                                const status = agentStatus.status;
                                                 return (
                                                     <span
                                                         key={agent}
