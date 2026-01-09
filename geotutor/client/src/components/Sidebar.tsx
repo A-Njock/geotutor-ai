@@ -15,11 +15,12 @@ interface SidebarProps {
     onNewProject: () => void;
     selectedProject: number | null;
     onSelectProject: (id: number | null) => void;
+    userMode: "student" | "teacher";
+    onModeChange: (mode: "student" | "teacher") => void;
 }
 
-export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProject }: SidebarProps) {
+export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProject, userMode, onModeChange }: SidebarProps) {
     const [location, setLocation] = useLocation();
-    const [userMode, setUserMode] = useState<"student" | "teacher">("student");
     const [showModeMenu, setShowModeMenu] = useState(false);
     const [showCodeDialog, setShowCodeDialog] = useState(false);
     const [accessCode, setAccessCode] = useState("");
@@ -35,7 +36,7 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
             setShowCodeDialog(true);
             setShowModeMenu(false);
         } else {
-            setUserMode("student");
+            onModeChange("student");
             setShowModeMenu(false);
         }
     };
@@ -44,7 +45,7 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
         // TODO: Validate access code with backend
         const TEACHER_CODE = "GEOTUTOR2024"; // This should be validated server-side
         if (accessCode === TEACHER_CODE) {
-            setUserMode("teacher");
+            onModeChange("teacher");
             setShowCodeDialog(false);
             setAccessCode("");
             toast.success("Teacher mode activated!");
@@ -77,7 +78,7 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
                 {/* Projects Section */}
                 <div className="border-t border-sidebar-border">
                     <div className="px-3 py-2">
-                        <span className="text-xs font-medium text-sidebar-foreground/70">Your Learning Projects</span>
+                        <span className="text-xs font-medium text-sidebar-foreground/70">{userMode === "teacher" ? "Your Teaching Projects" : "Your Learning Projects"}</span>
                     </div>
 
                     <ScrollArea className="max-h-48 px-3">

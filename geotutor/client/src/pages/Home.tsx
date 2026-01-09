@@ -26,6 +26,7 @@ export default function Home() {
   const [isAsking, setIsAsking] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [userMode, setUserMode] = useState<"student" | "teacher">("student");
   const [newProjectData, setNewProjectData] = useState({
     title: "",
     description: "",
@@ -160,6 +161,8 @@ export default function Home() {
         onNewProject={() => setShowNewProject(true)}
         selectedProject={selectedProject}
         onSelectProject={setSelectedProject}
+        userMode={userMode}
+        onModeChange={setUserMode}
       />
 
       {/* Main Content Area */}
@@ -281,9 +284,11 @@ export default function Home() {
       <Dialog open={showNewProject} onOpenChange={setShowNewProject}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Learning Project</DialogTitle>
+            <DialogTitle>{userMode === "teacher" ? "Create New Teaching Project" : "Create New Learning Project"}</DialogTitle>
             <DialogDescription>
-              Set up a new learning project with initial context and objectives to track your progress
+              {userMode === "teacher"
+                ? "Set up a new teaching project with course materials and teaching objectives"
+                : "Set up a new learning project with initial context and objectives to track your progress"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -302,7 +307,7 @@ export default function Home() {
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea
                 id="description"
-                placeholder="Describe your learning goals..."
+                placeholder={userMode === "teacher" ? "Describe the course objectives and target audience..." : "Describe your learning goals..."}
                 value={newProjectData.description}
                 onChange={(e) =>
                   setNewProjectData({ ...newProjectData, description: e.target.value })
@@ -311,10 +316,10 @@ export default function Home() {
               />
             </div>
             <div>
-              <Label htmlFor="context">Initial Context (optional)</Label>
+              <Label htmlFor="context">{userMode === "teacher" ? "Course Materials (optional)" : "Initial Context (optional)"}</Label>
               <Textarea
                 id="context"
-                placeholder="Provide background information, prerequisites, or what you already know..."
+                placeholder={userMode === "teacher" ? "Provide course syllabus, reference materials, or key concepts to cover..." : "Provide background information, prerequisites, or what you already know..."}
                 value={newProjectData.initialContext}
                 onChange={(e) =>
                   setNewProjectData({ ...newProjectData, initialContext: e.target.value })
@@ -323,10 +328,12 @@ export default function Home() {
               />
             </div>
             <div>
-              <Label htmlFor="objectives">Learning Objectives (optional)</Label>
+              <Label htmlFor="objectives">{userMode === "teacher" ? "Teaching Objectives (optional)" : "Learning Objectives (optional)"}</Label>
               <Textarea
                 id="objectives"
-                placeholder="Enter objectives separated by commas (e.g., Understand soil classification, Learn about shear strength, Master consolidation theory)"
+                placeholder={userMode === "teacher"
+                  ? "Enter teaching objectives separated by commas (e.g., Explain soil classification clearly, Demonstrate shear strength concepts, Help students master consolidation theory)"
+                  : "Enter objectives separated by commas (e.g., Understand soil classification, Learn about shear strength, Master consolidation theory)"}
                 value={newProjectData.objectives}
                 onChange={(e) =>
                   setNewProjectData({ ...newProjectData, objectives: e.target.value })
@@ -334,7 +341,9 @@ export default function Home() {
                 className="min-h-24"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                These objectives will be tracked as you ask questions in this project
+                {userMode === "teacher"
+                  ? "These objectives will help guide your teaching questions and resources"
+                  : "These objectives will be tracked as you ask questions in this project"}
               </p>
             </div>
             <Button
