@@ -124,6 +124,7 @@ export default function Home() {
       ...(includeVisual && { visual: "true" }),
       ...(includeVisual && visualType && { type: visualType }),
       ...(selectedProject && { project: selectedProject.toString() }),
+      ...(userMode === "teacher" && { mode: "teacher" }),
     });
 
     // Navigate immediately instead of waiting for mutation

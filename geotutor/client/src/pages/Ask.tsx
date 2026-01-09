@@ -28,6 +28,7 @@ export default function Ask() {
   const includeVisual = params.get("visual") === "true";
   const visualType = params.get("type") || undefined;
   const projectId = params.get("project") ? parseInt(params.get("project")!) : undefined;
+  const isTeacherMode = params.get("mode") === "teacher";
 
   // Fetch project details if projectId is provided
   const { data: project } = trpc.projects.getById.useQuery(projectId!, {
@@ -119,8 +120,38 @@ export default function Ask() {
     toast.success("Link copied to clipboard");
   };
 
-  const handleGenerateExam = () => {
-    toast.info("Exam sheet generation coming soon!");
+  const handleGenerateExam = async () => {
+    if (!result?.answer || !questionText) {
+      toast.error("No answer to generate exam from");
+      return;
+    }
+
+    toast.info("Generating exam sheet...");
+
+    try {
+      const apiUrl = import.meta.env.VITE_PYTHON_BRAIN_API_URL || "http://localhost:8000";
+      const response = await fetch(apiUrl + "/generate-exam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: questionText,
+          num_questions: 5,
+          context: result.answer
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate exam");
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Exam sheet generated!", { description: "Check your downloads folder" });
+        // If there's a file path, could trigger download here
+      } else {
+        toast.error("Exam generation failed");
+      }
+    } catch (err) {
+      toast.error("Failed to generate exam sheet");
+    }
   };
 
   const handleGenerateSlides = () => {
@@ -253,10 +284,12 @@ export default function Ask() {
                   Copy Link
                 </Button>
 
-                <Button variant="outline" className="gap-2" onClick={handleGenerateExam}>
-                  <FileText className="w-4 h-4" />
-                  Generate Exam Sheet
-                </Button>
+                {isTeacherMode && (
+                  <Button variant="outline" className="gap-2" onClick={handleGenerateExam}>
+                    <Download className="w-4 h-4" />
+                    Download Exam Sheet
+                  </Button>
+                )}
 
                 {user?.role === "teacher" && (
                   <Button variant="outline" className="gap-2" onClick={handleGenerateSlides}>
