@@ -20,12 +20,19 @@ export default function Ask() {
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [hasStartedStream, setHasStartedStream] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
 
   // Parse query params
   const params = new URLSearchParams(window.location.search);
   const questionText = params.get("q") || "";
   const includeVisual = params.get("visual") === "true";
   const visualType = params.get("type") || undefined;
+  const projectId = params.get("project") ? parseInt(params.get("project")!) : undefined;
+
+  // Fetch project details if projectId is provided
+  const { data: project } = trpc.projects.getById.useQuery(projectId!, {
+    enabled: !!projectId
+  });
 
   // Use the Python Brain SSE stream for real-time progress
   const { events, isStreaming, result, error, startStream } = usePythonBrainStream();
@@ -45,17 +52,60 @@ export default function Ask() {
     },
   });
 
-  // Start streaming on mount
+  // Build context from project and conversation history
+  const buildContext = () => {
+    const parts: string[] = [];
+
+    // Add project context
+    if (project) {
+      parts.push("=== PROJECT CONTEXT ===");
+      parts.push("Project: " + project.title);
+      if (project.description) parts.push("Description: " + project.description);
+      if (project.objectives?.length) parts.push("Objectives: " + project.objectives.join(", "));
+      if (project.initialContext) parts.push("Background: " + project.initialContext);
+      parts.push("");
+    }
+
+    // Add conversation history (last 5 exchanges)
+    if (conversationHistory.length > 0) {
+      parts.push("=== PREVIOUS CONVERSATION ===");
+      conversationHistory.slice(-10).forEach(msg => {
+        const roleLabel = msg.role === 'user' ? 'User' : 'Assistant';
+        const content = msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content;
+        parts.push(roleLabel + ": " + content);
+      });
+      parts.push("");
+    }
+
+    return parts.length > 0 ? parts.join("\n") : undefined;
+  };
+
+  // Start streaming on mount (wait for project data if projectId exists)
   useEffect(() => {
-    if (questionText && !hasStartedStream && !result && !error) {
+    // Don't start if we're waiting for project data
+    const shouldWaitForProject = projectId && !project;
+
+    if (questionText && !hasStartedStream && !result && !error && !shouldWaitForProject) {
       setHasStartedStream(true);
+
+      // Add current question to history
+      setConversationHistory(prev => [...prev, { role: 'user', content: questionText }]);
+
       startStream({
         question: questionText,
+        context: buildContext(),
         includeVisual,
         visualType,
       });
     }
-  }, [questionText, hasStartedStream, result, error, includeVisual, visualType, startStream]);
+  }, [questionText, hasStartedStream, result, error, includeVisual, visualType, startStream, projectId, project]);
+
+  // Add assistant response to history when stream completes
+  useEffect(() => {
+    if (result && !isStreaming && conversationHistory[conversationHistory.length - 1]?.role === 'user') {
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: result.answer }]);
+    }
+  }, [result, isStreaming]);
 
   const handleSave = () => {
     // Note: For now, saving requires a questionId from the database
