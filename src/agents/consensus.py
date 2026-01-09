@@ -29,6 +29,111 @@ Available functions: sin, cos, tan, asin, acos, atan, sqrt, exp, log, log10, rad
 DO NOT do mental math. ALWAYS wrap numerical computations in CALCULATE().
 """
 
+# Pedagogical prompt for COMPLEX calculations
+PEDAGOGICAL_CALCULATION_TEMPLATE = """
+**📚 PEDAGOGICAL APPROACH (Step-by-Step Learning):**
+You are teaching a student. Structure your answer as follows:
+
+## 1. 🎯 UNDERSTAND THE PROBLEM
+- Restate what we're asked to find in simple terms
+- Why is this important in geotechnical engineering?
+
+## 2. 📋 IDENTIFY GIVEN DATA
+List all known values with units:
+- Parameter = Value (Unit) — what does this represent?
+
+## 3. 🔬 SELECT THE METHOD
+- Which formula/method applies? (e.g., Terzaghi, Meyerhof, Rankine)
+- WHY does this method apply here? (explain the assumptions)
+- Cite the source (textbook, code, context)
+
+## 4. ✍️ SET UP THE EQUATION
+- Write the general equation with variable names
+- Explain what each term means
+
+## 5. 🧮 SOLVE STEP-BY-STEP
+- Substitute values one step at a time
+- Use CALCULATE() for EVERY numerical operation
+- Show intermediate results clearly
+
+## 6. ✅ VERIFY & INTERPRET
+- Does the result make physical sense?
+- Typical range for this type of calculation?
+- Safety factor considerations?
+
+## 7. 📝 FINAL ANSWER
+State the result clearly with:
+- Value + Units
+- Engineering interpretation
+- Any recommendations or cautions
+
+**Remember: A student should be able to learn the METHOD by reading your answer.**
+"""
+
+# Pedagogical prompt for SIMPLE educational questions
+PEDAGOGICAL_EDUCATIONAL_TEMPLATE = """
+**📚 PEDAGOGICAL APPROACH (Clear Explanation):**
+You are teaching a student. Structure your answer as follows:
+
+## 🎯 CORE CONCEPT
+- Start with a clear, simple definition
+- Use an everyday analogy if helpful
+
+## 🔬 HOW IT WORKS
+- Explain the mechanism or principle
+- Use bullet points for clarity
+
+## 📊 KEY FORMULAS (if applicable)
+- Present any relevant equations
+- Explain what each variable means
+
+## 🌍 REAL-WORLD APPLICATIONS
+- Where do we encounter this in practice?
+- Give 1-2 concrete examples
+
+## ⚠️ COMMON MISCONCEPTIONS
+- What do students often get wrong?
+- Clarify any tricky points
+
+## 🔗 RELATED CONCEPTS
+- Briefly mention connected topics for further study
+
+**Keep it clear, concise, and memorable. Use diagrams in your mind to explain visually.**
+"""
+
+def classify_query_complexity(query: str) -> str:
+    """
+    Classifies a query as 'calculation' or 'educational' based on keywords.
+    Returns: 'calculation' or 'educational'
+    """
+    q = query.lower()
+    
+    # Strong calculation indicators
+    calculation_keywords = [
+        "calculate", "compute", "determine", "find the", "what is the value",
+        "given", "=", "kn", "kpa", "m²", "m³", "footing", "bearing capacity",
+        "settlement", "factor of safety", "fs", "design", "size", "depth",
+        "pressure", "stress", "strain", "load", "force", "moment"
+    ]
+    
+    # Strong educational indicators
+    educational_keywords = [
+        "what is", "define", "explain", "describe", "why", "how does",
+        "difference between", "compare", "types of", "classification",
+        "principle", "theory", "concept", "meaning", "importance"
+    ]
+    
+    calc_score = sum(1 for k in calculation_keywords if k in q)
+    edu_score = sum(1 for k in educational_keywords if k in q)
+    
+    # Numbers and units strongly suggest calculation
+    import re
+    if re.search(r'\d+\.?\d*\s*(m|kn|kpa|mpa|kg|cm|mm)\b', q, re.IGNORECASE):
+        calc_score += 3
+    
+    return "calculation" if calc_score > edu_score else "educational"
+
+
 # Type alias for progress callback
 # Callback receives: (stage: str, agent: str, status: str, detail: Optional[str])
 ProgressCallback = Callable[[str, str, str, Optional[str]], None]
@@ -64,29 +169,48 @@ class ConsensusManager:
         print("--- [CONSENSUS] Stage 1: Collecting Responses ---")
         self._emit("collecting", "system", "started", f"Starting Stage 1 with {len(COUNCIL_MEMBERS)} agents")
         
-        prompt = f"""You are a senior geotechnical engineer.
-        First, review the RETRIEVED CONTEXT below. It may contain:
-        - Relevant Theory/Formulas
-        - Similar Solved Exercises (with solutions)
-        - Applicable Codes (Eurocode, ASTM)
-        - Specific Subsections/Clauses
+        # Classify query to select appropriate pedagogical approach
+        query_type = classify_query_complexity(query)
+        print(f"    Query classified as: {query_type.upper()}")
         
-        Context:
-        {context}
+        # Select pedagogical template based on query type
+        if query_type == "calculation":
+            pedagogical_approach = PEDAGOGICAL_CALCULATION_TEMPLATE
+            task_instructions = """
+Task: Solve this geotechnical engineering problem step-by-step.
+
+**Context-Based Learning:**
+1. Review the CONTEXT below for relevant formulas, solved examples, and code references.
+2. If similar solved exercises exist, ANALYZE and FOLLOW their method as precedent.
+3. Cite specific sources, subsections, or clauses that justify your approach.
+4. Use CALCULATE() for ALL numerical computations.
+"""
+        else:
+            pedagogical_approach = PEDAGOGICAL_EDUCATIONAL_TEMPLATE
+            task_instructions = """
+Task: Explain this geotechnical concept clearly for a student.
+
+**Teaching Approach:**
+1. Start with intuition before formulas.
+2. Use analogies to everyday experiences when helpful.
+3. Reference the CONTEXT for supporting material.
+4. Make it memorable and understandable.
+"""
         
-        {CALCULATOR_TOOL_INSTRUCTIONS}
-        
-        Task:
-        Solve the following problem. 
-        1. Identify the specific SUBSECTIONS or CLAUSES in the context that define the rules for this problem.
-        2. If similar solved exercises are present in the context, ANALYZE THEM. Use their method as a precedent.
-        3. Discuss WHY the referenced subsection applies to the specific user request details.
-        4. Cite the theory/source from the context.
-        5. Show your steps, calculations, and final result cleanly.
-        6. USE CALCULATE() for ALL numerical computations to ensure accuracy.
-        
-        Problem: {query}
-        """
+        prompt = f"""You are a senior geotechnical engineer AND an excellent teacher.
+Your goal is to help students LEARN, not just get answers.
+
+**RETRIEVED CONTEXT** (reference materials):
+{context}
+
+{CALCULATOR_TOOL_INSTRUCTIONS if query_type == "calculation" else ""}
+
+{pedagogical_approach}
+
+{task_instructions}
+
+**Question:** {query}
+"""
         
         responses = {}
         
