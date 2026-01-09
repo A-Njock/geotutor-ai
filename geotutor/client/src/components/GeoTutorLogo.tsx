@@ -15,9 +15,9 @@ export function GeoTutorLogo({
 }: GeoTutorLogoProps) {
   // Size configurations - GEO logo sized to match Tutor text height
   const sizeConfig = {
-    sm: { logoHeight: "h-6", fontSize: "text-lg", gap: "gap-1" },
-    md: { logoHeight: "h-8", fontSize: "text-2xl", gap: "gap-1" },
-    lg: { logoHeight: "h-12", fontSize: "text-3xl", gap: "gap-2" },
+    sm: { logoHeight: "h-5", fontSize: "text-lg", gap: "gap-1" },
+    md: { logoHeight: "h-7", fontSize: "text-2xl", gap: "gap-1" },
+    lg: { logoHeight: "h-10", fontSize: "text-3xl", gap: "gap-2" },
   };
 
   const { logoHeight, fontSize, gap } = sizeConfig[size];
