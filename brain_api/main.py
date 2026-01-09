@@ -4,17 +4,23 @@ This exposes the LanGraph agents as HTTP API endpoints
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
 import os
+import json
+import asyncio
+from queue import Queue
+from threading import Thread
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Import the graph
-from src.graph import app as graph_app
-from langchain_core.messages import HumanMessage
+# Import the graph components
+from src.graph import app as graph_app, librarian, critic
+from src.agents.consensus import ConsensusManager
+from langchain_core.messages import HumanMessage, AIMessage
 
 # Initialize FastAPI
 api = FastAPI(
@@ -26,7 +32,7 @@ api = FastAPI(
 # CORS middleware for TypeScript backend to call
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # TypeScript backend + React frontend
+    allow_origins=["*"],  # Allow all origins for SSE compatibility
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +63,7 @@ def health_check():
         "version": "1.0.0"
     }
 
-# Main question-answering endpoint
+# Main question-answering endpoint (original, non-streaming)
 @api.post("/ask", response_model=QuestionResponse)
 async def ask_question(request: QuestionRequest):
     """
@@ -106,6 +112,150 @@ async def ask_question(request: QuestionRequest):
             error=str(e)
         )
 
+
+# SSE Streaming endpoint
+@api.post("/ask-stream")
+async def ask_question_stream(request: QuestionRequest):
+    """
+    Process a question with real-time streaming of agent progress.
+    
+    Returns Server-Sent Events (SSE) with the following event types:
+    - progress: Agent status updates (stage, agent, status, detail)
+    - result: Final answer when complete
+    - error: Any errors that occur
+    """
+    
+    async def generate_events() -> AsyncGenerator[str, None]:
+        # Queue to receive progress events from sync threads
+        progress_queue: Queue = Queue()
+        result_holder = {"answer": "", "critique": "", "error": None}
+        
+        def progress_callback(stage: str, agent: str, status: str, detail: Optional[str]):
+            """Callback that puts progress events into the queue"""
+            event_data = {
+                "type": "progress",
+                "stage": stage,
+                "agent": agent,
+                "status": status,
+                "detail": detail or ""
+            }
+            progress_queue.put(event_data)
+        
+        def run_consensus():
+            """Run the consensus process in a separate thread"""
+            try:
+                question_text = request.question
+                if request.context:
+                    question_text = f"Context: {request.context}\n\nQuestion: {request.question}"
+                
+                # Stage 0: Librarian retrieves context
+                progress_queue.put({
+                    "type": "progress",
+                    "stage": "retrieving",
+                    "agent": "Librarian",
+                    "status": "started",
+                    "detail": "Searching knowledge base..."
+                })
+                
+                context = librarian.retrieve(question_text)
+                
+                progress_queue.put({
+                    "type": "progress",
+                    "stage": "retrieving",
+                    "agent": "Librarian",
+                    "status": "done",
+                    "detail": f"Found {len(context.split())} words of context"
+                })
+                
+                # Create consensus manager with progress callback
+                consensus = ConsensusManager(on_progress=progress_callback)
+                
+                # Run the 3-stage consensus
+                responses = consensus.stage1_collect_responses(question_text, context)
+                rankings, label_map = consensus.stage2_collect_rankings(responses)
+                final_answer = consensus.stage3_synthesize_final(question_text, responses, rankings, label_map)
+                
+                # Critic review
+                progress_queue.put({
+                    "type": "progress",
+                    "stage": "reviewing",
+                    "agent": "Critic",
+                    "status": "started",
+                    "detail": "Reviewing final answer..."
+                })
+                
+                critique = critic.review(question_text, "Consensus Plan", "N/A", final_answer)
+                
+                progress_queue.put({
+                    "type": "progress",
+                    "stage": "reviewing",
+                    "agent": "Critic",
+                    "status": "done",
+                    "detail": "Review complete"
+                })
+                
+                result_holder["answer"] = final_answer
+                result_holder["critique"] = critique
+                
+            except Exception as e:
+                result_holder["error"] = str(e)
+                progress_queue.put({
+                    "type": "error",
+                    "message": str(e)
+                })
+            finally:
+                # Signal completion
+                progress_queue.put(None)
+        
+        # Start the consensus process in a background thread
+        thread = Thread(target=run_consensus)
+        thread.start()
+        
+        # Yield SSE events as they arrive
+        while True:
+            try:
+                # Check for events with a timeout to allow async cooperation
+                await asyncio.sleep(0.1)  # Small delay to prevent busy waiting
+                
+                while not progress_queue.empty():
+                    event = progress_queue.get_nowait()
+                    
+                    if event is None:
+                        # Process complete, send final result
+                        if result_holder["error"]:
+                            final_event = {
+                                "type": "error",
+                                "message": result_holder["error"]
+                            }
+                        else:
+                            final_event = {
+                                "type": "result",
+                                "answer": result_holder["answer"],
+                                "critique": result_holder["critique"],
+                                "success": True
+                            }
+                        yield f"data: {json.dumps(final_event)}\n\n"
+                        return
+                    
+                    # Send progress event
+                    yield f"data: {json.dumps(event)}\n\n"
+                    
+            except Exception as e:
+                error_event = {"type": "error", "message": str(e)}
+                yield f"data: {json.dumps(error_event)}\n\n"
+                return
+    
+    return StreamingResponse(
+        generate_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
+
+
 # Exam generation endpoint
 @api.post("/generate-exam")
 async def generate_exam(topic: str, num_questions: int = 5):
@@ -144,8 +294,15 @@ def get_system_info():
             "Knowledge base retrieval",
             "Exam generation",
             "Concept map visualization",
-            "Critical review"
-        ]
+            "Critical review",
+            "Real-time streaming progress"
+        ],
+        "endpoints": {
+            "/ask": "POST - Standard question answering",
+            "/ask-stream": "POST - Streaming question answering with progress updates (SSE)",
+            "/generate-exam": "POST - Generate exam questions",
+            "/system/info": "GET - System information"
+        }
     }
 
 if __name__ == "__main__":
@@ -167,6 +324,8 @@ if __name__ == "__main__":
     - Critic (Validation)
     - Exam Council (Generation)
     - Visualizer (Concept Maps)
+    
+    NEW: Streaming endpoint at /ask-stream
     
     Ready to serve GeoTutor frontend!
     ========================================

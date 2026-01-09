@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Callable, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .utils import call_llm, KEYS
 from ..tools.calculator import process_calculations
@@ -29,9 +29,32 @@ Available functions: sin, cos, tan, asin, acos, atan, sqrt, exp, log, log10, rad
 DO NOT do mental math. ALWAYS wrap numerical computations in CALCULATE().
 """
 
+# Type alias for progress callback
+# Callback receives: (stage: str, agent: str, status: str, detail: Optional[str])
+ProgressCallback = Callable[[str, str, str, Optional[str]], None]
+
 class ConsensusManager:
-    def __init__(self):
-        pass
+    def __init__(self, on_progress: Optional[ProgressCallback] = None):
+        """
+        Initialize ConsensusManager with optional progress callback.
+        
+        Args:
+            on_progress: Callback function that receives progress updates.
+                        Signature: (stage, agent, status, detail) -> None
+                        - stage: "collecting" | "ranking" | "synthesizing"
+                        - agent: Agent name (e.g., "Member_GPT") or "system"
+                        - status: "started" | "done" | "error"
+                        - detail: Optional additional info
+        """
+        self.on_progress = on_progress
+    
+    def _emit(self, stage: str, agent: str, status: str, detail: Optional[str] = None):
+        """Emit a progress event if callback is registered."""
+        if self.on_progress:
+            try:
+                self.on_progress(stage, agent, status, detail)
+            except Exception as e:
+                print(f"[WARN] Progress callback error: {e}")
 
     def stage1_collect_responses(self, query: str, context: str) -> Dict[str, str]:
         """
@@ -39,6 +62,8 @@ class ConsensusManager:
         Returns: {member_name: solution_text}
         """
         print("--- [CONSENSUS] Stage 1: Collecting Responses ---")
+        self._emit("collecting", "system", "started", f"Starting Stage 1 with {len(COUNCIL_MEMBERS)} agents")
+        
         prompt = f"""You are a senior geotechnical engineer.
         First, review the RETRIEVED CONTEXT below. It may contain:
         - Relevant Theory/Formulas
@@ -65,6 +90,10 @@ class ConsensusManager:
         
         responses = {}
         
+        # Emit that each agent is starting
+        for m in COUNCIL_MEMBERS:
+            self._emit("collecting", m["name"], "started", f"Generating solution using {m['model']}")
+        
         with ThreadPoolExecutor(max_workers=3) as executor:
             future_to_member = {
                 executor.submit(
@@ -84,10 +113,13 @@ class ConsensusManager:
                     processed_res = process_calculations(res)
                     responses[member_name] = processed_res
                     print(f" > {member_name} submitted solution.")
+                    self._emit("collecting", member_name, "done", "Solution submitted")
                 except Exception as e:
                     print(f" ! {member_name} failed: {e}")
                     responses[member_name] = f"Error: {e}"
+                    self._emit("collecting", member_name, "error", str(e))
                     
+        self._emit("collecting", "system", "done", f"Collected {len(responses)} responses")
         return responses
 
 
@@ -98,6 +130,7 @@ class ConsensusManager:
         Returns: (list_of_rankings, label_map)
         """
         print("--- [CONSENSUS] Stage 2: Peer Evaluation ---")
+        self._emit("ranking", "system", "started", "Starting peer evaluation")
         
         # 1. Anonymize
         labels = ["A", "B", "C", "D", "E"]
@@ -112,6 +145,7 @@ class ConsensusManager:
             anonymized_text += f"\n--- SOLUTION {label} ---\n{responses[member]}\n"
             
         if not label_map:
+            self._emit("ranking", "system", "error", "No valid responses to rank")
             return [], {}
 
         # 2. Prompt for Ranking
@@ -130,6 +164,10 @@ class ConsensusManager:
         """
         
         rankings = []
+        
+        # Emit that each agent is starting to rank
+        for m in COUNCIL_MEMBERS:
+            self._emit("ranking", m["name"], "started", "Evaluating solutions")
         
         with ThreadPoolExecutor(max_workers=3) as executor:
             # We ask the same Council Members to review
@@ -160,9 +198,12 @@ class ConsensusManager:
                         "parsed_order": parsed
                     })
                     print(f" > {reviewer} submitted ranking: {parsed}")
+                    self._emit("ranking", reviewer, "done", f"Ranked: {' > '.join(parsed)}" if parsed else "Ranking parsed")
                 except Exception as e:
                     print(f" ! {reviewer} ranking failed: {e}")
+                    self._emit("ranking", reviewer, "error", str(e))
                     
+        self._emit("ranking", "system", "done", f"Received {len(rankings)} rankings")
         return rankings, label_map
 
     def parse_ranking(self, text: str) -> List[str]:
@@ -236,6 +277,7 @@ class ConsensusManager:
         Stage 3: The Chair synthesizes the final answer based on the winner.
         """
         print("--- [CONSENSUS] Stage 3: Synthesis ---")
+        self._emit("synthesizing", "system", "started", "Aggregating votes and synthesizing answer")
         
         # Simple aggregation: Vote counting (Borda count or simple winner)
         # Using simple winner for V1
@@ -253,6 +295,7 @@ class ConsensusManager:
         winner_label = max(scores, key=scores.get) if scores else None
         winner_member = label_map.get(winner_label, "Unknown")
         print(f" > Winner based on aggregation: Solution {winner_label} (by {winner_member})")
+        self._emit("synthesizing", winner_member, "started", f"Selected as winner (Solution {winner_label})")
         
         best_solution = responses.get(winner_member, "")
         
@@ -274,6 +317,8 @@ class ConsensusManager:
         Format cleanly as a final report.
         """
         
+        self._emit("synthesizing", "Chair", "started", "Drafting final answer")
+        
         # Chair uses DeepSeek (or strongest model)
         final_res = call_llm(
             prompt=chair_prompt, 
@@ -282,11 +327,17 @@ class ConsensusManager:
             api_key=KEYS["deepseek"]
         )
         
+        self._emit("synthesizing", "Chair", "done", "Final answer ready")
+        self._emit("synthesizing", "system", "done", "Consensus complete")
+        
         return final_res
 
 if __name__ == "__main__":
-    # Test
-    cm = ConsensusManager()
+    # Test with a simple callback that prints progress
+    def print_progress(stage, agent, status, detail):
+        print(f"[PROGRESS] {stage} | {agent} | {status} | {detail}")
+    
+    cm = ConsensusManager(on_progress=print_progress)
     qs = "What is the bearing capacity of a prompt footing? B=2m, Gamma=18, phi=30."
     ctx = "Reference: Terzaghi (1943). Nq=22.5, Ngamma=19.7 for phi=30."
     

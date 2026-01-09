@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GeoTutorLogo } from "@/components/GeoTutorLogo";
+import { ThinkingProcess, usePythonBrainStream } from "@/components/ThinkingProcess";
 
 export default function Ask() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function Ask() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
+  const [hasStartedStream, setHasStartedStream] = useState(false);
 
   // Parse query params
   const params = new URLSearchParams(window.location.search);
@@ -25,16 +27,10 @@ export default function Ask() {
   const includeVisual = params.get("visual") === "true";
   const visualType = params.get("type") || undefined;
 
-  // Ask question mutation
-  const askMutation = trpc.qa.ask.useMutation({
-    onError: (error) => {
-      toast.error("Failed to generate answer", {
-        description: error.message,
-      });
-    },
-  });
+  // Use the Python Brain SSE stream for real-time progress
+  const { events, isStreaming, result, error, startStream } = usePythonBrainStream();
 
-  // Save to library mutation
+  // Save to library mutation (still using tRPC for database operations)
   const saveMutation = trpc.library.save.useMutation({
     onSuccess: () => {
       toast.success("Saved to library");
@@ -49,31 +45,22 @@ export default function Ask() {
     },
   });
 
-  // Trigger question on mount
-  useState(() => {
-    if (questionText && !askMutation.data && !askMutation.isPending) {
-      askMutation.mutate({
-        questionText,
+  // Start streaming on mount
+  useEffect(() => {
+    if (questionText && !hasStartedStream && !result && !error) {
+      setHasStartedStream(true);
+      startStream({
+        question: questionText,
         includeVisual,
-        visualType: visualType as any,
+        visualType,
       });
     }
-  });
+  }, [questionText, hasStartedStream, result, error, includeVisual, visualType, startStream]);
 
   const handleSave = () => {
-    if (askMutation.data?.questionId) {
-      saveMutation.mutate({
-        questionId: askMutation.data.questionId,
-        tags,
-        notes,
-      });
-    }
-  };
-
-  const handleDownloadVisual = () => {
-    if (askMutation.data?.visualUrl) {
-      window.open(askMutation.data.visualUrl, "_blank");
-    }
+    // Note: For now, saving requires a questionId from the database
+    // With streaming, we'd need a separate endpoint to save
+    toast.info("Saving with streaming is being implemented...");
   };
 
   const handleShare = () => {
@@ -94,6 +81,12 @@ export default function Ask() {
     setLocation("/");
     return null;
   }
+
+  // Determine the answer text from the stream result
+  const answerText = result?.critique || result?.answer || "";
+  const isLoading = isStreaming;
+  const hasResult = !!result;
+  const hasError = !!error;
 
   return (
     <div className="min-h-screen bg-white">
@@ -132,40 +125,36 @@ export default function Ask() {
             <h1 className="text-3xl font-bold text-gray-900 mb-4">{questionText}</h1>
           </div>
 
-          {/* Loading State */}
-          {askMutation.isPending && (
+          {/* Thinking Process Display - Shows during streaming */}
+          {(isLoading || events.length > 0) && (
+            <div className="mb-8">
+              <ThinkingProcess
+                isActive={isLoading}
+                events={events}
+              />
+            </div>
+          )}
+
+          {/* Legacy Loading State (fallback if no events) */}
+          {isLoading && events.length === 0 && (
             <div className="flex items-center justify-center py-16">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Generating your answer...</p>
+                <p className="text-gray-600">Connecting to multi-agent system...</p>
               </div>
             </div>
           )}
 
           {/* Answer Display */}
-          {askMutation.data && (
+          {hasResult && (
             <div className="space-y-8">
               {/* Text Answer */}
               <div className="bg-gray-50 rounded-lg p-8 border border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Answer</h2>
                 <div className="prose prose-sm max-w-none">
-                  <Streamdown>{askMutation.data.answerText}</Streamdown>
+                  <Streamdown>{answerText}</Streamdown>
                 </div>
               </div>
-
-              {/* Visual Answer */}
-              {askMutation.data.visualUrl && (
-                <div className="bg-gray-50 rounded-lg p-8 border border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Visual Explanation</h2>
-                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-center min-h-96">
-                    <img
-                      src={askMutation.data.visualUrl}
-                      alt="Visual explanation"
-                      className="max-w-full max-h-96 object-contain"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">
@@ -208,13 +197,6 @@ export default function Ask() {
                   </DialogContent>
                 </Dialog>
 
-                {askMutation.data.visualUrl && (
-                  <Button variant="outline" className="gap-2" onClick={handleDownloadVisual}>
-                    <Download className="w-4 h-4" />
-                    Download Visual
-                  </Button>
-                )}
-
                 <Button variant="outline" className="gap-2" onClick={handleShare}>
                   <Copy className="w-4 h-4" />
                   Copy Link
@@ -236,9 +218,10 @@ export default function Ask() {
           )}
 
           {/* Error State */}
-          {askMutation.isError && (
+          {hasError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <p className="text-red-800">Failed to generate answer. Please try again.</p>
+              <p className="text-red-800 font-medium">Failed to generate answer</p>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
               <Button onClick={() => setLocation("/")} className="mt-4">
                 Back to Home
               </Button>
