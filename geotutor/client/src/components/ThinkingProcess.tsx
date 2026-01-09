@@ -113,8 +113,10 @@ export function ThinkingProcess({ isActive, events, className }: ThinkingProcess
             }
         }
 
-        // If we got a result, mark all stages as complete
-        if (hasResult) {
+        // Mark all complete when: result received OR streaming stopped with events
+        const isComplete = hasResult || (!isActive && events.length > 0);
+
+        if (isComplete) {
             const allStages = ["retrieving", "collecting", "ranking", "synthesizing", "reviewing"];
             allStages.forEach(s => newCompleted.add(s));
             // Also mark all agents in each stage as done
@@ -126,9 +128,9 @@ export function ThinkingProcess({ isActive, events, className }: ThinkingProcess
         }
 
         setCompletedStages(newCompleted);
-        setCurrentStage(hasResult ? null : lastStage);
+        setCurrentStage(isComplete ? null : lastStage);
         setStageAgentStatuses(newStageAgents);
-    }, [events]);
+    }, [events, isActive]);
 
     if (!isActive && events.length === 0) {
         return null;
