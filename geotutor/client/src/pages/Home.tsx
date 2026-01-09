@@ -75,8 +75,9 @@ export default function Home() {
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
           <div className="max-w-md text-center space-y-8">
             <div className="space-y-4">
-              <GeoTutorLogo className="w-16 h-16 mx-auto" />
-              <h1 className="text-4xl font-bold text-white">GeoTutor</h1>
+              <div className="flex justify-center">
+                <GeoTutorLogo size="lg" showText={true} className="scale-150" />
+              </div>
               <p className="text-xl text-slate-300">
                 AI-Powered Geotechnical Engineering Learning
               </p>

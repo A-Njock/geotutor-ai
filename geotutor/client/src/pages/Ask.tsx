@@ -99,8 +99,7 @@ export default function Ask() {
             <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <GeoTutorLogo className="w-6 h-6" />
-            <span className="font-semibold text-gray-900">GeoTutor</span>
+            <GeoTutorLogo size="sm" showText={true} />
           </div>
           <nav className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/history")}>

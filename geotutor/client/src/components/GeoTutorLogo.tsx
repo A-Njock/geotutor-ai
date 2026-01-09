@@ -1,19 +1,41 @@
-export function GeoTutorLogo({ className = "w-8 h-8" }: { className?: string }) {
+interface GeoTutorLogoProps {
+  className?: string;
+  showText?: boolean;
+  size?: "sm" | "md" | "lg";
+}
+
+/**
+ * GeoTutor logo component with the stylized "GEO" imagery
+ * and optional "Tutor" text.
+ */
+export function GeoTutorLogo({
+  className = "",
+  showText = true,
+  size = "md",
+}: GeoTutorLogoProps) {
+  // Size configurations
+  const sizeConfig = {
+    sm: { logoHeight: "h-6", fontSize: "text-lg", gap: "gap-0" },
+    md: { logoHeight: "h-8", fontSize: "text-xl", gap: "gap-0.5" },
+    lg: { logoHeight: "h-10", fontSize: "text-2xl", gap: "gap-1" },
+  };
+
+  const { logoHeight, fontSize, gap } = sizeConfig[size];
+
   return (
-    <svg
-      viewBox="0 0 64 64"
-      className={className}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Back layer - Light Blue */}
-      <rect x="8" y="8" width="48" height="48" rx="8" fill="#E0F2FE" opacity="0.8" />
-      
-      {/* Middle layer - Medium Blue */}
-      <rect x="12" y="12" width="40" height="40" rx="6" fill="#0EA5E9" opacity="0.6" />
-      
-      {/* Front layer - Dark Blue */}
-      <rect x="16" y="16" width="32" height="32" rx="4" fill="#0369A1" />
-    </svg>
+    <div className={`flex items-center ${gap} ${className}`}>
+      {/* GEO logo image */}
+      <img
+        src="/geotutor-logo.png"
+        alt="GEO"
+        className={`${logoHeight} w-auto object-contain`}
+      />
+      {/* Tutor text */}
+      {showText && (
+        <span className={`font-bold text-gray-900 ${fontSize} tracking-tight`}>
+          Tutor
+        </span>
+      )}
+    </div>
   );
 }

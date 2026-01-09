@@ -57,9 +57,8 @@ export function Sidebar({ onNewTask, onNewProject, selectedProject, onSelectProj
         <>
             <div className="w-60 border-r bg-sidebar border-sidebar-border flex flex-col h-screen">
                 {/* Logo & App Name */}
-                <div className="p-4 border-b border-sidebar-border flex items-center gap-2">
-                    <GeoTutorLogo className="w-6 h-6" />
-                    <span className="font-semibold text-sidebar-foreground">GeoTutor</span>
+                <div className="p-4 border-b border-sidebar-border">
+                    <GeoTutorLogo size="md" showText={true} />
                 </div>
 
                 {/* New Task Action */}
