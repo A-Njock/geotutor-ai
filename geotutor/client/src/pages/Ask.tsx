@@ -77,7 +77,9 @@ export default function Ask() {
     toast.info("Presentation slide generation coming soon!");
   };
 
-  if (!user) {
+  // Allow both authenticated users and guest sessions
+  const isGuest = typeof window !== 'undefined' && localStorage.getItem("geotutor-guest-session");
+  if (!user && !isGuest) {
     setLocation("/");
     return null;
   }
