@@ -110,7 +110,7 @@ export default function Ask() {
               Library
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setLocation("/profile")}>
-              {user.name || "Profile"}
+              {user?.name || "Profile"}
             </Button>
           </nav>
         </div>
@@ -209,7 +209,7 @@ export default function Ask() {
                   Generate Exam Sheet
                 </Button>
 
-                {user.role === "teacher" && (
+                {user?.role === "teacher" && (
                   <Button variant="outline" className="gap-2" onClick={handleGenerateSlides}>
                     <Presentation className="w-4 h-4" />
                     Generate Slides
