@@ -112,13 +112,20 @@ export default function Home() {
       return;
     }
 
+    // Navigate immediately to the Ask page with question in URL
+    // The Ask page will handle SSE streaming directly to Python Brain
+    // This bypasses the 60-second Railway gateway timeout
     setIsAsking(true);
-    await askMutation.mutateAsync({
-      questionText,
-      includeVisual,
-      visualType: includeVisual ? (visualType as any) : undefined,
-      projectId: selectedProject || undefined,
+
+    const searchParams = new URLSearchParams({
+      q: questionText,
+      ...(includeVisual && { visual: "true" }),
+      ...(includeVisual && visualType && { type: visualType }),
+      ...(selectedProject && { project: selectedProject.toString() }),
     });
+
+    // Navigate immediately instead of waiting for mutation
+    setLocation(`/ask?${searchParams.toString()}`);
   };
 
   const handleCreateProject = async () => {
