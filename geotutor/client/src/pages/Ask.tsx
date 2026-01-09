@@ -238,6 +238,26 @@ export default function Ask() {
                 </div>
               </div>
 
+              {/* Visual Explanation - if generated */}
+              {result?.visualBase64 && (
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-8 border border-blue-200">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="text-2xl">🎨</span>
+                    Visual Explanation
+                  </h2>
+                  <div className="flex justify-center">
+                    <img
+                      src={`data:image/png;base64,${result.visualBase64}`}
+                      alt="Generated pedagogical visual"
+                      className="max-w-full rounded-lg shadow-lg border border-gray-200"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 text-center mt-3">
+                    AI-generated pedagogical illustration
+                  </p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">
                 <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

@@ -20,7 +20,19 @@ load_dotenv()
 # Import the graph components
 from src.graph import app as graph_app, librarian, critic
 from src.agents.consensus import ConsensusManager
+from src.tools.visual_generator import VisualGenerator
 from langchain_core.messages import HumanMessage, AIMessage
+
+# Initialize visual generator (lazy load to avoid errors if no API key)
+visual_generator = None
+def get_visual_generator():
+    global visual_generator
+    if visual_generator is None:
+        try:
+            visual_generator = VisualGenerator()
+        except Exception as e:
+            print(f"[WARN] Visual generator not initialized: {e}")
+    return visual_generator
 
 # Initialize FastAPI
 api = FastAPI(
@@ -49,6 +61,8 @@ class QuestionResponse(BaseModel):
     answer: str
     critique: str
     mindmapPath: Optional[str] = None
+    visualPath: Optional[str] = None
+    visualBase64: Optional[str] = None
     context: Optional[str] = None
     plan: Optional[str] = None
     success: bool = True
@@ -128,7 +142,7 @@ async def ask_question_stream(request: QuestionRequest):
     async def generate_events() -> AsyncGenerator[str, None]:
         # Queue to receive progress events from sync threads
         progress_queue: Queue = Queue()
-        result_holder = {"answer": "", "critique": "", "error": None}
+        result_holder = {"answer": "", "critique": "", "error": None, "visual_path": None, "visual_base64": None}
         
         def progress_callback(stage: str, agent: str, status: str, detail: Optional[str]):
             """Callback that puts progress events into the queue"""
@@ -197,6 +211,60 @@ async def ask_question_stream(request: QuestionRequest):
                 result_holder["answer"] = final_answer
                 result_holder["critique"] = critique
                 
+                # Generate visual if requested
+                if request.includeVisual and request.visualType:
+                    progress_queue.put({
+                        "type": "progress",
+                        "stage": "visualizing",
+                        "agent": "Visualizer",
+                        "status": "started",
+                        "detail": f"Generating {request.visualType} visualization..."
+                    })
+                    
+                    try:
+                        gen = get_visual_generator()
+                        if gen:
+                            visual_result = gen.generate(
+                                visual_type=request.visualType,
+                                llm_response=final_answer,
+                                topic_summary=question_text[:100]
+                            )
+                            
+                            if visual_result["success"]:
+                                result_holder["visual_path"] = visual_result["image_path"]
+                                result_holder["visual_base64"] = visual_result["image_base64"]
+                                progress_queue.put({
+                                    "type": "progress",
+                                    "stage": "visualizing",
+                                    "agent": "Visualizer",
+                                    "status": "done",
+                                    "detail": "Visual generated successfully"
+                                })
+                            else:
+                                progress_queue.put({
+                                    "type": "progress",
+                                    "stage": "visualizing",
+                                    "agent": "Visualizer",
+                                    "status": "done",
+                                    "detail": f"Visual generation skipped: {visual_result.get('error', 'Unknown error')}"
+                                })
+                        else:
+                            progress_queue.put({
+                                "type": "progress",
+                                "stage": "visualizing",
+                                "agent": "Visualizer",
+                                "status": "done",
+                                "detail": "Visual generator not available (missing API key)"
+                            })
+                    except Exception as ve:
+                        progress_queue.put({
+                            "type": "progress",
+                            "stage": "visualizing",
+                            "agent": "Visualizer",
+                            "status": "done",
+                            "detail": f"Visual generation failed: {str(ve)}"
+                        })
+                
             except Exception as e:
                 result_holder["error"] = str(e)
                 progress_queue.put({
@@ -232,6 +300,8 @@ async def ask_question_stream(request: QuestionRequest):
                                 "type": "result",
                                 "answer": result_holder["answer"],
                                 "critique": result_holder["critique"],
+                                "visualPath": result_holder.get("visual_path"),
+                                "visualBase64": result_holder.get("visual_base64"),
                                 "success": True
                             }
                         yield f"data: {json.dumps(final_event)}\n\n"

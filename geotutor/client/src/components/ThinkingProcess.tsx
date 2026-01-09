@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, Loader2, AlertCircle, Brain, BookOpen, Users, Scale, FileCheck } from "lucide-react";
+import { Check, Loader2, AlertCircle, Brain, BookOpen, Users, Scale, FileCheck, Image } from "lucide-react";
 
 /**
  * Progress event from the Python Brain SSE stream
  */
 export interface ThinkingEvent {
     type: "progress" | "result" | "error";
-    stage?: "retrieving" | "collecting" | "ranking" | "synthesizing" | "reviewing";
+    stage?: "retrieving" | "collecting" | "ranking" | "synthesizing" | "reviewing" | "visualizing";
     agent?: string;
     status?: "started" | "done" | "error";
     detail?: string;
     // For result type
     answer?: string;
     critique?: string;
+    visualPath?: string;
+    visualBase64?: string;
     success?: boolean;
     // For error type
     message?: string;
@@ -55,6 +57,11 @@ const STAGE_CONFIG = {
         label: "Final Review",
         description: "Quality checking the answer...",
     },
+    visualizing: {
+        icon: Image,
+        label: "Generating Visual",
+        description: "Creating pedagogical illustration...",
+    },
 };
 
 // Agent colors for visual distinction
@@ -65,6 +72,7 @@ const AGENT_COLORS: Record<string, string> = {
     "Librarian": "text-amber-600 bg-amber-100",
     "Chair": "text-indigo-600 bg-indigo-100",
     "Critic": "text-rose-600 bg-rose-100",
+    "Visualizer": "text-cyan-600 bg-cyan-100",
     "system": "text-gray-600 bg-gray-100",
 };
 
