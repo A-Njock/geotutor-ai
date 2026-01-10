@@ -16,13 +16,23 @@ CHROMA_DB_PATH = "./chroma_db"
 def download_and_extract_chromadb():
     """Download chroma_db.zip from Cloudflare R2 and extract it."""
     db_path = Path(CHROMA_DB_PATH)
+    sqlite_file = db_path / "chroma.sqlite3"
     
-    # Skip if already exists
-    if db_path.exists() and any(db_path.iterdir()):
-        print(f"[ChromaDB] Database already exists at {CHROMA_DB_PATH}, skipping download.")
+    # Skip if already exists and looks valid
+    if sqlite_file.exists():
+        print(f"[ChromaDB] Database file found at {sqlite_file}, skipping download.")
         return True
     
-    print(f"[ChromaDB] Database not found. Downloading from Cloudflare R2...")
+    # If directory exists but no sqlite file, it might be partial/empty
+    if db_path.exists():
+        print(f"[ChromaDB] Path {db_path} exists but is incomplete. Forcing re-download...")
+        import shutil
+        try:
+            shutil.rmtree(db_path)
+        except Exception as e:
+            print(f"[ChromaDB] Warning: Could not remove existing dir: {e}")
+    
+    print(f"[ChromaDB] Database not found or incomplete. Downloading from Cloudflare R2...")
     
     try:
         print(f"[ChromaDB] Downloading from: {CHROMADB_URL}")
