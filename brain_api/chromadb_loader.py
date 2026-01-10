@@ -9,7 +9,7 @@ import requests
 from pathlib import Path
 
 # Configuration - Cloudflare R2 Public URL
-CHROMADB_URL = "https://pub-0e7a2751c3a94d129871749b3f15361.r2.dev/chroma_db.zip"
+CHROMADB_URL = "https://pub-0e7a2751c3a94d1298717489b3f15361.r2.dev/chroma_db.zip"
 CHROMA_DB_PATH = "./chroma_db"
 
 
