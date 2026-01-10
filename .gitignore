@@ -56,4 +56,5 @@ temp/
 # Large data directories (keep local)
 PDF_database/
 chroma_db/
+chroma_db.zip
 outputs/

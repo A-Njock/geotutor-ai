@@ -8,22 +8,22 @@ python-dotenv>=1.0.0
 # LangChain + LangGraph
 langchain>=0.1.0
 langgraph>=0.0.20
-langchain-community>=0.0.20
-langchain-openai>=0.0.5
-langchain-google-genai>=0.0.6
+langchain-community>=0.1.0
+langchain-openai>=0.1.0
+langchain-google-genai>=0.1.0
 google-generativeai>=0.4.0
 
-# Vector Store
+# Vector Store & Embeddings
 chromadb>=0.4.22
 sentence-transformers>=2.2.0
 
-# Document Processing
-unstructured>=0.12.0
+# PDF Processing (minimal for metadata/reference)
 pymupdf>=1.23.0
 
-# OCR Support (for scanned PDFs)
-pytesseract>=0.3.10
-pdf2image>=1.16.3
+# Dependencies for ML (CPU only to save build time/space)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+torchvision>=0.15.0
 
 # Data
 pandas>=2.0.0
@@ -39,5 +39,5 @@ matplotlib>=3.7.0
 # Document creation
 python-docx>=0.8.11
 
-# OpenAI SDK
+# SDK
 openai>=1.0.0
