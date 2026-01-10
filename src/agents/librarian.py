@@ -9,17 +9,21 @@ class LibrarianAgent:
         self.llm = get_llm("gpt-4o")
         self.client = chromadb.PersistentClient(path="./chroma_db")
         
-        # Use Simple/Mock embedding to match ingestion
-        # In a real scenario, use openai_ef or similar
-        class MockEmbeddingFunction(embedding_functions.EmbeddingFunction):
+        # Use real sentence-transformer embeddings (must match ingest.py)
+        from sentence_transformers import SentenceTransformer
+        
+        class SentenceTransformerEmbeddingFunction(embedding_functions.EmbeddingFunction):
+            def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+                self.model = SentenceTransformer(model_name)
+            
             def __call__(self, input: list[str]) -> list[list[float]]:
-                import random
-                return [[random.random() for _ in range(384)] for _ in input]
+                embeddings = self.model.encode(input, convert_to_numpy=True)
+                return embeddings.tolist()
 
-        self.ef = MockEmbeddingFunction()
+        self.ef = SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
         
         try:
-           # Get collection
+           # Get collection with real embeddings
            self.collection = self.client.get_collection(name="geotech_docs", embedding_function=self.ef)
         except Exception as e:
            print(f"Librarian Warning: Could not get collection. {e}")

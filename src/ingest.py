@@ -46,11 +46,18 @@ def recursive_split_text(text: str, chunk_size: int = 1000, overlap: int = 200) 
         
     return chunks
 
-class MockEmbeddingFunction(embedding_functions.EmbeddingFunction):
+class SentenceTransformerEmbeddingFunction(embedding_functions.EmbeddingFunction):
+    """
+    Real embedding function using sentence-transformers.
+    Model: all-MiniLM-L6-v2 (384 dimensions, fast, good quality)
+    """
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        from sentence_transformers import SentenceTransformer
+        self.model = SentenceTransformer(model_name)
+    
     def __call__(self, input: list[str]) -> list[list[float]]:
-        # Return random vectors of size 384
-        import random
-        return [[random.random() for _ in range(384)] for _ in input]
+        embeddings = self.model.encode(input, convert_to_numpy=True)
+        return embeddings.tolist()
 
 def main():
     pdf_dir = "PDF_database"
@@ -65,17 +72,10 @@ def main():
     print("Initializing ChromaDB client...")
     client = chromadb.PersistentClient(path="./chroma_db")
     
-    # Try to get default embedding function, else fallback to mock
-    ef = None
-    try:
-        # This might fail if onnxruntime/torch issues exist
-        # ef = embedding_functions.DefaultEmbeddingFunction()
-        # For safety in this verified broken env, use mock or simple
-        print("Using Mock Embeddings to bypass ML dependency hell.")
-        ef = MockEmbeddingFunction()
-    except Exception as e:
-        print(f"Failed to load default embeddings: {e}")
-        ef = MockEmbeddingFunction()
+    # Use real sentence-transformer embeddings
+    print("Loading sentence-transformer model (all-MiniLM-L6-v2)...")
+    ef = SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
+    print("Embedding model loaded successfully.")
 
     collection = client.get_or_create_collection(name="geotech_docs", embedding_function=ef)
     
