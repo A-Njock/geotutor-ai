@@ -52,3 +52,8 @@ ENV/
 .cache/
 .temp/
 temp/
+
+# Large data directories (keep local)
+PDF_database/
+chroma_db/
+outputs/

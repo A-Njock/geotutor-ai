@@ -21,6 +21,10 @@ sentence-transformers>=2.2.0
 unstructured>=0.12.0
 pymupdf>=1.23.0
 
+# OCR Support (for scanned PDFs)
+pytesseract>=0.3.10
+pdf2image>=1.16.3
+
 # Data
 pandas>=2.0.0
 numpy>=1.24.0
