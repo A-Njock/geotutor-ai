@@ -17,6 +17,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Import ChromaDB loader (downloads database from GitHub Releases if not present)
+from .chromadb_loader import ensure_chromadb_available
+
 # Import the graph components
 from src.graph import app as graph_app, librarian, critic
 from src.agents.consensus import ConsensusManager
@@ -40,6 +43,17 @@ api = FastAPI(
     description="Multi-Agent Geotechnical Engineering AI System",
     version="1.0.0"
 )
+
+# Startup event: ensure ChromaDB is available
+@api.on_event("startup")
+async def startup_event():
+    """Download ChromaDB from GitHub Releases if not present."""
+    print("[Startup] Checking ChromaDB availability...")
+    success = ensure_chromadb_available()
+    if success:
+        print("[Startup] ChromaDB ready!")
+    else:
+        print("[Startup] WARNING: ChromaDB not available - retrieval will fail")
 
 # CORS middleware for TypeScript backend to call
 api.add_middleware(
