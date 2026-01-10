@@ -72,12 +72,7 @@ def download_and_extract_chromadb():
 
 def ensure_chromadb_available():
     """Ensure ChromaDB is available, downloading if necessary."""
-    db_path = Path(CHROMA_DB_PATH)
-    
-    if not db_path.exists() or not any(db_path.iterdir()):
-        return download_and_extract_chromadb()
-    
-    return True
+    return download_and_extract_chromadb()
 
 
 if __name__ == "__main__":
