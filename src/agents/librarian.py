@@ -58,7 +58,7 @@ class LibrarianAgent:
         formatted_parts = []
         
         for i, (doc, meta) in enumerate(zip(documents, metadatas)):
-            # Build source citation
+            # Extract metadata
             source = meta.get("source", "Unknown")
             origin = meta.get("material_origin", "")
             chapter = meta.get("chapter", "")
@@ -67,18 +67,23 @@ class LibrarianAgent:
             content_type = meta.get("content_type", "")
             topic_tags = meta.get("topic_tags", "")
             
-            # Create structured header
-            header_parts = [f"[Source: {source}"]
+            # Limit source name to 40 chars for readability
+            short_source = source[:40] + "..." if len(source) > 40 else source
+            
+            # Create structured header - source LAST for better readability
+            header_parts = []
             if origin:
                 header_parts.append(f"Type: {origin}")
+            if content_type:
+                header_parts.append(f"Content: {content_type}")
             if chapter:
                 header_parts.append(f"Chapter: {chapter[:50]}")
             if page:
                 header_parts.append(f"Page: {page}")
-            if content_type:
-                header_parts.append(f"Content: {content_type}")
+            # Source last
+            header_parts.append(f"Source: {short_source}")
             
-            header = " | ".join(header_parts) + "]"
+            header = "[" + " | ".join(header_parts) + "]"
             
             # Add relevance score if available
             if scores and i < len(scores):
