@@ -18,21 +18,33 @@ def download_and_extract_chromadb():
     db_path = Path(CHROMA_DB_PATH)
     sqlite_file = db_path / "chroma.sqlite3"
     
-    # Skip if already exists and looks valid
+    # Check if database looks valid by trying to find the collection
+    is_valid = False
     if sqlite_file.exists():
-        print(f"[ChromaDB] Database file found at {sqlite_file}, skipping download.")
+        try:
+            import chromadb
+            client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
+            # Try to get the specific collection we need
+            client.get_collection("geotech_docs")
+            print(f"[ChromaDB] Valid database and 'geotech_docs' collection found at {CHROMA_DB_PATH}, skipping download.")
+            is_valid = True
+        except Exception as e:
+            print(f"[ChromaDB] Database at {CHROMA_DB_PATH} is invalid or missing 'geotech_docs' collection: {e}")
+            is_valid = False
+    
+    if is_valid:
         return True
     
-    # If directory exists but no sqlite file, it might be partial/empty
+    # If directory exists but is invalid, it's stale/empty. Force re-download.
     if db_path.exists():
-        print(f"[ChromaDB] Path {db_path} exists but is incomplete. Forcing re-download...")
+        print(f"[ChromaDB] Path {db_path} is incomplete or invalid. Forcing re-download...")
         import shutil
         try:
             shutil.rmtree(db_path)
         except Exception as e:
             print(f"[ChromaDB] Warning: Could not remove existing dir: {e}")
     
-    print(f"[ChromaDB] Database not found or incomplete. Downloading from Cloudflare R2...")
+    print(f"[ChromaDB] Database not found or invalid. Downloading from Cloudflare R2...")
     
     try:
         print(f"[ChromaDB] Downloading from: {CHROMADB_URL}")
