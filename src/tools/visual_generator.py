@@ -53,18 +53,82 @@ class VisualGenerator:
         if not topic_summary:
             topic_summary = llm_response.split('.')[0][:100] if llm_response else "Geotechnical Concept"
         
-        prompt = f"""Generate a pedagogical illustration for: {topic_summary}
-        
-Type: {visual_type}
-Content context: {llm_response[:1000]}
+        # 3-word summary for the title requirement
+        three_word_summary = " ".join(topic_summary.split()[:3])
 
-Requirements:
-- Professional educational style
-- Clear labels and annotations
-- White background
-- High contrast
-- Accurate technical details
-"""
+        prompt = f"""Generate a MASTERPIECE pedagogical illustration for '{visual_type}' that visually explains '{llm_response[:2000]}' — STRICTLY BASED ON CONTENT PROVIDED, NO ADDITIONS/INVENTIONS. Context: Geotechnical Engineering. Nature Journal figure quality: ultra-refined, crystal-clear, publication-ready, easy-to-follow scientific diagrams.
+
+## VISUAL QUALITY BENCHMARK (MANDATORY)
+- 4K resolution (4096x4096), 300 DPI print-ready
+- Simple pedagogical technical render — engineering blueprint aesthetic, NOT futuristic/sci-fi
+- White background, precise drop shadows (3px offset, 20% opacity Gaussian blur)
+- Typography ONLY: DIN Next Pro (headers), Source Sans Pro (body), precise kerning
+- Color palette: Primary #4A90E2 (blue), Secondary #FF6B35 (safety orange), Grays #4A4A4A/#D3D3D3
+- Perfect 12-column CSS grid layout, 24px gutters, 16px baseline grid
+
+## CORE SCIENTIFIC COMPOSITION (70/20/10 RULE)
+1. 70% CENTRAL GEOTECHNICAL VISUALIZER (core process/model/equation)
+2. 20% ANNOTATIONS/CALLOUTS (numbered 1-N with leader lines)
+3. 10% TITLE+LEGEND (top/bottom, scannable hierarchy)
+
+## {visual_type} GEOTECH EXECUTION
+FLOWCHART:  
+DIAGRAM: 
+INFOGRAPHIC: Vertical timeline 
+ILLUSTRATION: clear soil mechanics metaphors
+
+## MANDATORY 15 PEDAGOGICAL ELEMENTS (Geotech Edition)
+1. TITLE (top, 48pt DIN Next Pro Bold): '{visual_type}: {three_word_summary}'
+2. SUBTITLE (32pt): '3 Key Geotechnical Principles' — bullet list below
+3. STEP-BY-STEP (1-10): Numbered icons + soil icons (clay=sand=gravel=rockfill)
+4. GLOSSARY (4 terms): Speech bubbles — FS, φ, c, γ, Su, OCR, etc.
+5. QUANT METRICS: 5 engineering values (e.g., 'FS=1.5', 'φ=32°', 'c=25kPa')
+6. COMPARISON: 2x5 table — Stable vs Failure Mode (displacement/strain/settlement)
+7. CAUTION BOXES (2): Yellow ⚠️ — 'Overconsolidated clays', 'Liquefaction risk'
+8. PRO TIP BOXES (3): Green 💡 — 'Bishop method', 'Infinite slope eq', 'CPM calibration'
+9. LEGEND: Bottom-right, soil symbols + line styles + color codes
+10. FLOW ARROWS: Thick 8pt, gradient blue-orange, velocity lines
+11. 3D ISOMETRIC: Consistent top-left light source, orthographic projection
+12. SCALE BAR: Real-world — '1m', '10kPa', human figure (engineer w/ helmet)
+13. Mohr Circle: Mandatory for stress analysis visuals
+14. Force Vectors: Precise arrows w/ magnitude labels
+15. Equation Callouts: 2-3 key formulas (Terzaghi, Rankine, etc.)
+
+## GEOTECHNICAL LIGHTING & MATERIALS (Realistic)
+- Studio engineering lighting: 45° key light (top-left), cool fill (right), subtle rim
+- Materials: Realistic soil textures (sandy=clayey=gravel), concrete/braced steel, HDPE liner
+- Shadows: Precise contact shadows + ambient occlusion
+- Depth cues: Size gradients, overlap hierarchy, isometric foreshortening
+
+## TYPOGRAPHY PERFECTION (Scientific Standard)
+Headers: #4A90E2 DIN Next Pro Bold 48pt (title)/36pt (sections), tracking +50
+Body: #2D2D2D Source Sans Pro Regular 18pt, leading 1.6x
+Equations: LaTeX-style, 24pt, monospace Courier
+Units: Consistent SI (kPa, kN/m², degrees), bold
+Grid-snapped: Every text box pixel-perfect to 12-col grid
+
+## PEDAGOGICAL ENGINEERING DESIGN PRINCIPLES
+
+
+## STRICT CONTENT FIDELITY (ZERO INVENTION)
+- Extract EXACT concepts, equations, failure modes, parameters from '{llm_response[:500]}'
+
+- No generic examples — ONLY response-derived specifics
+- Unknown terms → omit, don't fabricate
+
+## NATURE JOURNAL QUALITY CHECKLIST (FAIL WITHOUT)
+✅ Title full-width centered, 48pt perfect kerning
+✅ 15+ numbered callouts w/ leader lines to EXACT features  
+✅ 4+ data viz (Mohr circle, FS chart, φ/c plot, timeline)
+✅ Unambiguous flow (stress path arrows + phase labels)
+✅ Soil legend instantly scannable (USCS symbols)
+✅ Zero text overlap, impeccable z-depth layering
+✅ Human-scale reference (engineer=1.8m, truck=standard)
+✅ Equation accuracy (match response math precisely)
+✅ Print CMYK-safe colors, 300 DPI edge sharpness
+✅ Reads as standalone figure (no external explanation needed)
+
+Synthesize into SINGLE ultra-dense, information-rich composition: Geotechnical textbook figure meets Nature journal polish. Square 1:1 aspect ratio, maximum pedagogical value per pixel, zero wasted space, publication-ready perfection."""
         return prompt
     
     def generate(
