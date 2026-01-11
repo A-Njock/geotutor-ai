@@ -271,13 +271,17 @@ async def ask_question_stream(request: QuestionRequest):
                                 "detail": "Visual generator not available (missing API key)"
                             })
                     except Exception as ve:
-                        progress_queue.put({
-                            "type": "progress",
-                            "stage": "visualizing",
-                            "agent": "Visualizer",
-                            "status": "done",
                             "detail": f"Visual generation failed: {str(ve)}"
                         })
+                    
+                    # Mark stage as complete
+                    progress_queue.put({
+                        "type": "progress",
+                        "stage": "visualizing",
+                        "agent": "system",
+                        "status": "done",
+                        "detail": "Visualization phase complete"
+                    })
                 
             except Exception as e:
                 result_holder["error"] = str(e)
