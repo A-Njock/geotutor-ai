@@ -86,6 +86,9 @@ export default function Home() {
             <p className="text-slate-400">
               Get detailed, AI-powered explanations with visual aids to enhance your understanding of geotechnical engineering concepts.
             </p>
+            <p className="text-sm text-slate-500 font-mono">
+              Created by GeoInvention.com
+            </p>
             {getLoginUrl() ? (
               <Button size="lg" onClick={() => (window.location.href = getLoginUrl())} className="w-full">
                 Sign In to Start Learning

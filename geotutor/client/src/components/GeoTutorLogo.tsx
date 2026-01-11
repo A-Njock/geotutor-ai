@@ -32,7 +32,7 @@ export function GeoTutorLogo({
       />
       {/* Tutor text */}
       {showText && (
-        <span className={`font-bold text-gray-900 ${fontSize} tracking-tight leading-none`}>
+        <span className={`font-bold text-slate-100 ${fontSize} tracking-tight leading-none`}>
           Tutor
         </span>
       )}
