@@ -2,6 +2,7 @@ interface GeoTutorLogoProps {
   className?: string;
   showText?: boolean;
   size?: "sm" | "md" | "lg";
+  textColor?: string;
 }
 
 /**
@@ -12,6 +13,7 @@ export function GeoTutorLogo({
   className = "",
   showText = true,
   size = "md",
+  textColor = "text-gray-900",
 }: GeoTutorLogoProps) {
   // Size configurations - GEO logo sized to match Tutor text height
   const sizeConfig = {
@@ -32,7 +34,7 @@ export function GeoTutorLogo({
       />
       {/* Tutor text */}
       {showText && (
-        <span className={`font-bold text-slate-100 ${fontSize} tracking-tight leading-none`}>
+        <span className={`font-bold ${textColor} ${fontSize} tracking-tight leading-none`}>
           Tutor
         </span>
       )}

@@ -77,7 +77,7 @@ export default function Home() {
           <div className="max-w-md text-center space-y-8">
             <div className="space-y-4">
               <div className="flex justify-center">
-                <GeoTutorLogo size="lg" showText={true} className="scale-150" />
+                <GeoTutorLogo size="lg" showText={true} className="scale-150" textColor="text-slate-100" />
               </div>
               <p className="text-xl text-slate-300">
                 AI-Powered Geotechnical Engineering Learning
