@@ -180,7 +180,11 @@ export default function Home() {
               <User className="w-4 h-4 mr-2" />
               {user?.name || user?.email}
             </Button>
-            <Button variant="ghost" size="sm" onClick={logout}>
+            <Button variant="ghost" size="sm" onClick={() => {
+              localStorage.removeItem("geotutor-guest-session");
+              logout();
+              window.location.reload();
+            }}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
