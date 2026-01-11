@@ -166,7 +166,7 @@ export default function Ask() {
   }
 
   // Determine the answer text from the stream result
-  const answerText = result?.critique || result?.answer || "";
+  const answerText = result?.answer || result?.critique || "";
   const isLoading = isStreaming;
   const hasResult = !!result;
   const hasError = !!error;
