@@ -9,8 +9,10 @@ import requests
 from pathlib import Path
 
 # Configuration - Cloudflare R2 Public URL
+# Configuration - Cloudflare R2 Public URL
 CHROMADB_URL = "https://pub-0e7a2751c3a94d1298717489b3f15361.r2.dev/chroma_db.zip"
-CHROMA_DB_PATH = "./chroma_db"
+# Use Railway volume path if available, or default to local directory
+CHROMA_DB_PATH = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "./chroma_db")
 
 
 def download_and_extract_chromadb():
