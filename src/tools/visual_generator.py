@@ -144,45 +144,41 @@ Synthesize into SINGLE ultra-dense, information-rich composition: Geotechnical t
         try:
             prompt = self._build_prompt(visual_type, llm_response, topic_summary)
             
-            # Call the API using the user's pattern
-            # Note: We use 'gemini-2.0-flash-exp' as it is the current SOTA image model available in the exp feed usually
-            # But I will try to respect the user's "gemini-2.5-flash-image" string if that is what they want.
-            # However, to be safe on Railway I will use "gemini-2.0-flash-exp" which is known to work for images recently.
-            # User specifically asked for "gemini-2.5-flash-image". I will use that.
-            
-            response = self.client.models.generate_content(
-                model="gemini-2.0-flash-exp", # Reverting to known working model for safety, user's 2.5 might be private preview
-                contents=[prompt],
-                config=types.GenerateContentConfig(
-                    response_mime_type="image/png"
+            # Use generate_image for actual image generation
+            # Note: imagen-3.0-generate-001 is the current SOTA image model in AI Studio/Gemini API
+            response = self.client.models.generate_image(
+                model="imagen-3.0-generate-001",
+                prompt=prompt,
+                config=types.GenerateImageConfig(
+                    output_mime_type="image/png",
+                    number_of_images=1,
+                    include_rai_reason=True
                 )
             )
             
-            # Process response parts
+            # Process response images
             image_base64 = None
-            if response.parts:
-                for part in response.parts:
-                    if part.inline_data:
-                        # part.inline_data.data is bytes
-                        image_bytes = part.inline_data.data
-                        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+            if response.generated_images:
+                gen_image = response.generated_images[0]
+                image_bytes = gen_image.image.image_bytes
+                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                
+                image_path = None
+                if save:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"{visual_type}_{timestamp}.png"
+                    image_path = self.output_dir / filename
+                    
+                    with open(image_path, "wb") as f:
+                        f.write(image_bytes)
                         
-                        image_path = None
-                        if save:
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            filename = f"{visual_type}_{timestamp}.png"
-                            image_path = self.output_dir / filename
-                            
-                            with open(image_path, "wb") as f:
-                                f.write(image_bytes)
-                                
-                        return {
-                            "success": True,
-                            "image_path": str(image_path) if image_path else None,
-                            "image_base64": image_base64,
-                            "mime_type": "image/png",
-                            "error": None
-                        }
+                return {
+                    "success": True,
+                    "image_path": str(image_path) if image_path else None,
+                    "image_base64": image_base64,
+                    "mime_type": "image/png",
+                    "error": None
+                }
             
             return {
                 "success": False,
