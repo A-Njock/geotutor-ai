@@ -144,9 +144,9 @@ Synthesize into SINGLE ultra-dense, information-rich composition: Geotechnical t
         try:
             prompt = self._build_prompt(visual_type, llm_response, topic_summary)
             
-            # Use generate_image for actual image generation
+            # Use generate_images for actual image generation
             # Note: imagen-3.0-generate-001 is the current SOTA image model in AI Studio/Gemini API
-            response = self.client.models.generate_image(
+            response = self.client.models.generate_images(
                 model="imagen-3.0-generate-001",
                 prompt=prompt,
                 config=types.GenerateImageConfig(
