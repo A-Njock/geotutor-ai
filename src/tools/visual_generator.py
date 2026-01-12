@@ -149,7 +149,7 @@ Synthesize into SINGLE ultra-dense, information-rich composition: Geotechnical t
             response = self.client.models.generate_images(
                 model="imagen-3.0-generate-001",
                 prompt=prompt,
-                config=types.GenerateImageConfig(
+                config=types.GenerateImagesConfig(
                     output_mime_type="image/png",
                     number_of_images=1,
                     include_rai_reason=True
