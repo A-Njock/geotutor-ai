@@ -395,6 +395,9 @@ def get_system_info():
             "/ask-stream": "POST - Streaming question answering with progress updates (SSE)",
             "/generate-exam": "POST - Generate exam questions",
             "/system/info": "GET - System information"
+        }
+    }
+
 @api.get("/system/models")
 def list_models():
     """Diagnostic endpoint to list available models."""
