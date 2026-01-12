@@ -394,6 +394,9 @@ def get_system_info():
             "/ask": "POST - Standard question answering",
             "/ask-stream": "POST - Streaming question answering with progress updates (SSE)",
             "/generate-exam": "POST - Generate exam questions",
+            "/system/info": "GET - System information"
+        }
+    }
 
 if __name__ == "__main__":
     import uvicorn
