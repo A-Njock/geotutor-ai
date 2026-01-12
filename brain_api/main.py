@@ -394,23 +394,6 @@ def get_system_info():
             "/ask": "POST - Standard question answering",
             "/ask-stream": "POST - Streaming question answering with progress updates (SSE)",
             "/generate-exam": "POST - Generate exam questions",
-            "/system/info": "GET - System information"
-        }
-    }
-
-@api.get("/system/models")
-def list_models():
-    """Diagnostic endpoint to list available models."""
-    try:
-        from src.tools.visual_generator import get_visual_generator
-        gen = get_visual_generator()
-        models = gen.client.models.list()
-        return {
-            "success": True,
-            "models": [m.name for m in models]
-        }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
