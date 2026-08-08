@@ -91,11 +91,11 @@ def ensure_chromadb_available():
     never re-download it; on Railway the original behavior is preserved.
     """
     # The legacy database backs only classic mode, which the current UI no
-    # longer exposes. Download it only when explicitly enabled.
-    if not os.environ.get("ENABLE_LEGACY_BRAIN") \
-            and not Path(CHROMA_DB_PATH).exists():
-        print("[ChromaDB] Legacy database not enabled; skipping download. "
-              "Ask mode uses data/chroma instead.")
+    # longer exposes. STRICTLY opt-in: never download or touch the data
+    # volume unless explicitly enabled.
+    if not os.environ.get("ENABLE_LEGACY_BRAIN"):
+        print("[ChromaDB] Legacy database not enabled; skipping. "
+              "Ask mode uses the library index instead.")
         return False
     return download_and_extract_chromadb()
 

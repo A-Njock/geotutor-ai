@@ -223,4 +223,9 @@ def get_retriever() -> HybridRetriever:
     global _retriever
     if _retriever is None:
         _retriever = HybridRetriever()
+    elif _retriever.collection.count() == 0:
+        # the index may have arrived after an early empty initialisation
+        # (e.g. a query raced the volume download at boot): retry once per
+        # call instead of caching emptiness for the process lifetime
+        _retriever = HybridRetriever()
     return _retriever

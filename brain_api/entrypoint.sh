@@ -6,6 +6,12 @@ set -e
 
 DATA_DIR="${DATA_DIR:-/app/data}"
 
+# one-time recovery switch: wipe the volume and re-download a clean index
+if [ -n "$INDEX_FORCE_REFRESH" ]; then
+    echo "[boot] INDEX_FORCE_REFRESH set: clearing $DATA_DIR ..."
+    rm -rf "$DATA_DIR"/* "$DATA_DIR"/.index_ready 2>/dev/null || true
+fi
+
 if [ -n "$INDEX_ARCHIVE_URL" ] && [ ! -e "$DATA_DIR/.index_ready" ]; then
     echo "[boot] downloading library index into $DATA_DIR ..."
     mkdir -p "$DATA_DIR"
