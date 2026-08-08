@@ -195,6 +195,19 @@ document, figure and entry arguments) and answer via the clarification flow;
 the value is then used with provenance "reader-supplied chart reading".
 This becomes a clarification type when such a chain is first built.
 
+## B4. Phoon & Kulhawy (1999) — DIGITIZED (2026-08-08)
+
+`Phoon_Kulhawy_1999_Characterization_of_Geotechnical_Variability_CGJ.pdf`
+(CGJ 36(4) 612-624; verified from the text layer). Digitized into
+`tables/phoon_kulhawy_1999.py` and wired as the ADVISORY TIER in
+solver.`_phoon_advisory` (warn + proceed; hard bounds in units.py refuse):
+- Table 1 (p. 615): strength-property variability incl. phi-bar sand
+  35-41 deg (COV 5-11), clay/silt 9-33 deg (COV 10-50)
+- Table 2 (p. 616): index parameters incl. gamma 14-20 kN/m3 (COV 3-20),
+  gamma_d 13-18, wn 13-105 %
+- Table 7 (p. 621): guidelines used for the advisory ranges (phi 20-40 deg
+  COV 5-15; su UC 10-400 / UU 10-350 / CIUC 150-700 kPa)
+
 ## C. Remaining wants — none blocking
 
 - (minor) A Cc correlation source — or accept the standard published equations

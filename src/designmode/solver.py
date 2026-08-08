@@ -206,6 +206,7 @@ def solve(problem_text: str, analysis: dict, answers: dict | None = None) -> dic
     add("assume", "How the problem is read", "setup",
         narration=_frame_narration(frame, assumption_lines),
         viz=[{"op": "show", "target": "figure"}])
+    _phoon_advisory(givens, add)
 
     # ---- standard defaults, made explicitly and labelled ------------------
     if "phi" not in givens and givens.get("su") is not None:
@@ -678,6 +679,38 @@ def _number_pool(step: dict, givens: dict) -> set[float]:
     return pool
 
 
+def _phoon_advisory(givens: dict, add) -> None:
+    """One advisory step when given values fall outside the typical ranges
+    of Phoon & Kulhawy (1999). Warns with the citation, never blocks."""
+    from .tables.phoon_kulhawy_1999 import CITATION, atypical_warnings
+    warns = atypical_warnings(givens)
+    if not warns:
+        return
+    parts = []
+    prov = []
+    for w in warns:
+        parts.append(f"{w['sym']} = {w['value']:g} lies outside "
+                     f"{w['lo']:g} to {w['hi']:g} {w['unit']}")
+        prov.append({
+            "symbol": w["sym"], "value": w["value"],
+            "means": "given value outside the typical range of means "
+                     "compiled in the literature",
+            "source": f"{CITATION}, {w['where']}: {w['detail']}",
+            "arguments": [f"typical range {w['lo']:g} to {w['hi']:g} "
+                          f"{w['unit']}"],
+            "whyApplies": "an atypical input is worth a second look "
+                          "before the result is trusted",
+        })
+    add("explain", "A note on the input values", "setup",
+        narration="Before solving, one check on the data itself: "
+                  + "; ".join(parts) + ". These ranges are the spans of "
+                  "mean values compiled by Phoon and Kulhawy (1999), so an "
+                  "unusual value is not necessarily wrong, but it deserves "
+                  "a second look. The values are used exactly as given.",
+        provenance=prov,
+        viz=[])
+
+
 def strip_dashes(text: str) -> str:
     """Em-dashes and en-dashes must never reach the reader (house style);
     LLM prose is sanitised here regardless of what the prompt asked for."""
@@ -986,6 +1019,7 @@ def _solve_domain(domain, problem_text, frame, givens, analysis, notes):
     add("assume", "How the problem is read", "setup",
         narration=_frame_narration(frame, assumption_lines),
         viz=[{"op": "show", "target": "figure"}])
+    _phoon_advisory(givens, add)
 
     out = DOMAIN_BUILDERS[domain](frame, givens, add, problem_text)
     if "error" in out:
