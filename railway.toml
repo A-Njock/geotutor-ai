@@ -1,0 +1,9 @@
+# Railway config for the geotutor-brain service (deployed from the repo root)
+[build]
+builder = "dockerfile"
+dockerfilePath = "brain_api/Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 600
+restartPolicyType = "on_failure"

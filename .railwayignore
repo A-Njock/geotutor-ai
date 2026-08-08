@@ -1,0 +1,13 @@
+data/
+archive/
+vendor/
+outputs/
+.venv/
+venv/
+node_modules/
+geotutor/node_modules/
+geotutor/dist/
+.playwright-mcp/
+*.pdf
+.env
+__pycache__/

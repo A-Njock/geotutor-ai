@@ -20,11 +20,35 @@ load_dotenv()
 # Import ChromaDB loader (downloads database from GitHub Releases if not present)
 from .chromadb_loader import ensure_chromadb_available
 
-# Import the graph components
-from src.graph import app as graph_app, librarian, critic
-from src.agents.consensus import ConsensusManager
-from src.tools.visual_generator import VisualGenerator
-from langchain_core.messages import HumanMessage, AIMessage
+# The legacy multi-agent brain (classic mode) needs heavy optional deps
+# (langgraph, langchain) that the deployed image does not ship. Modes 1 and 2
+# never touch it; its endpoints answer with a maintenance message when the
+# stack is absent.
+try:
+    from src.graph import app as graph_app, librarian, critic
+    from src.agents.consensus import ConsensusManager
+    from langchain_core.messages import HumanMessage, AIMessage
+    LEGACY_BRAIN_AVAILABLE = True
+except Exception as _legacy_err:  # pragma: no cover
+    graph_app = librarian = critic = ConsensusManager = None
+    HumanMessage = AIMessage = None
+    LEGACY_BRAIN_AVAILABLE = False
+    print(f"[boot] legacy multi-agent brain unavailable: {_legacy_err}")
+
+try:
+    from src.tools.visual_generator import VisualGenerator
+except Exception as _vis_err:  # pragma: no cover
+    VisualGenerator = None
+    print(f"[boot] visual generator unavailable: {_vis_err}")
+
+_LEGACY_UNAVAILABLE = ("GeoTutor is under maintenance right now. Please "
+                       "try again in a few minutes.")
+
+
+def _require_legacy():
+    if not LEGACY_BRAIN_AVAILABLE:
+        raise HTTPException(status_code=503, detail=_LEGACY_UNAVAILABLE)
+
 
 # Initialize visual generator (lazy load to avoid errors if no API key)
 visual_generator = None
@@ -224,12 +248,13 @@ async def ask_question(request: QuestionRequest):
     4. Critic reviews the final answer
     5. Returns comprehensive response
     """
+    _require_legacy()
     try:
         # Prepare the question with additional context if provided
         question_text = request.question
         if request.context:
             question_text = f"Context: {request.context}\n\nQuestion: {request.question}"
-        
+
         # Run the LanGraph workflow
         inputs = {"messages": [HumanMessage(content=question_text)]}
         result = graph_app.invoke(inputs)
@@ -264,6 +289,7 @@ async def ask_question(request: QuestionRequest):
 # SSE Streaming endpoint
 @api.post("/ask-stream")
 async def ask_question_stream(request: QuestionRequest):
+    _require_legacy()
     """
     Process a question with real-time streaming of agent progress.
     
