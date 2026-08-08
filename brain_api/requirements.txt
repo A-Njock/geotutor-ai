@@ -1,0 +1,28 @@
+# Runtime dependencies of the GeoTutor Python brain (Modes 1 + 2).
+# Offline tools (PDF indexing, OCR, exam council, figure generation) have
+# their own extras and are NOT needed to serve the app.
+
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+openai>=1.30.0
+requests>=2.31.0
+
+# Mode 2 design brain
+pint>=0.23
+PyYAML>=6.0
+
+# Slope kernel verification backend (pinned: pre-1.0 interface churn)
+xslope==0.2.1
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+shapely>=2.0
+matplotlib>=3.8
+openpyxl>=3.1
+tabulate>=0.9
+
+# Mode 1 grounded chat (library index + query-time embeddings)
+chromadb>=0.4.22
+sentence-transformers>=2.5

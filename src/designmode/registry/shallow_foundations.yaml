@@ -1,0 +1,164 @@
+# Formula registry: shallow foundations (protocol step F1).
+# The model SELECTS an id from this file; it never free-writes an equation.
+# A deterministic matcher (registry.py) verifies the declared frame satisfies
+# `applicability` before a formula may run. Factor values come from
+# factors.py functions named under `factors:` - never from model recall.
+#
+# Symbols are canonical: stresses kPa, lengths m, unit weights kN/m^3,
+# angles degrees. `q_surcharge` and `gamma_eff` are prepared by the solver's
+# water-table stage before any formula runs.
+
+domain: shallow_foundation
+formulas:
+
+  - id: terzaghi_general
+    method: Terzaghi
+    label: "Terzaghi (1943), general shear"
+    year: 1943
+    quantity: q_ult
+    applicability:
+      failure_mechanism: [general_shear]
+      drainage: [drained, undrained]
+      footing_shape: [strip, square, rectangular, circular]
+      max_Df_over_B: 1.0        # Terzaghi assumed a shallow footing, Df <= B
+      inclined_load: false
+    requires: [c, phi, gamma_eff, B, q_surcharge]
+    factors:
+      - symbol: N_c
+        fn: terzaghi_Nc
+        args: [phi]
+        means: "bearing capacity factor for the cohesion term"
+        source: "Terzaghi's (1943) theory, closed form"
+      - symbol: N_q
+        fn: terzaghi_Nq
+        args: [phi]
+        means: "bearing capacity factor for the surcharge term"
+        source: "Terzaghi's (1943) theory, closed form"
+      - symbol: N_gamma
+        fn: terzaghi_Ngamma
+        args: [phi]
+        means: "bearing capacity factor for the self-weight term"
+        source: "Kumbhojkar's (1993) values for Terzaghi's theory, interpolated"
+    shape_depth: terzaghi
+    equation_tex: "q_u = c\\,N_c s_c + q\\,N_q + \\tfrac{1}{2}\\gamma B N_\\gamma s_\\gamma"
+    expression: "c*N_c*s_c + q_surcharge*N_q + 0.5*gamma_eff*B*N_gamma*s_gamma"
+    notes: "No depth factors: Terzaghi neglected shear above the base."
+
+  - id: meyerhof_general
+    method: Meyerhof
+    label: "Meyerhof (1963), general equation"
+    year: 1963
+    quantity: q_ult
+    applicability:
+      failure_mechanism: [general_shear]
+      drainage: [drained, undrained]
+      footing_shape: [strip, square, rectangular, circular]
+      inclined_load: false
+    requires: [c, phi, gamma_eff, B, q_surcharge, Df]
+    factors:
+      - symbol: N_c
+        fn: meyerhof_Nc
+        args: [phi]
+        means: "bearing capacity factor for the cohesion term"
+        source: "the Prandtl-Reissner closed form, (Nq − 1) cot φ"
+      - symbol: N_q
+        fn: meyerhof_Nq
+        args: [phi]
+        means: "bearing capacity factor for the surcharge term"
+        source: "Reissner's (1924) closed form, e^(π tan φ) tan²(45 + φ/2)"
+      - symbol: N_gamma
+        fn: meyerhof_Ngamma
+        args: [phi]
+        means: "bearing capacity factor for the self-weight term"
+        source: "Meyerhof (1963), (Nq − 1) tan(1.4 φ)"
+    shape_depth: meyerhof
+    equation_tex: "q_u = c\\,N_c s_c d_c + q\\,N_q s_q d_q + \\tfrac{1}{2}\\gamma B N_\\gamma s_\\gamma d_\\gamma"
+    expression: "c*N_c*s_c*d_c + q_surcharge*N_q*s_q*d_q + 0.5*gamma_eff*B*N_gamma*s_gamma*d_gamma"
+    notes: "Shape and depth factors from Meyerhof (1963) using Kp = tan²(45 + φ/2)."
+
+  - id: hansen_general
+    method: Hansen
+    label: "Brinch Hansen (1970), general equation"
+    year: 1970
+    quantity: q_ult
+    applicability:
+      failure_mechanism: [general_shear]
+      drainage: [drained, undrained]
+      footing_shape: [strip, square, rectangular, circular]
+      inclined_load: false
+    requires: [c, phi, gamma_eff, B, q_surcharge, Df]
+    factors:
+      - symbol: N_c
+        fn: hansen_Nc
+        args: [phi]
+        means: "bearing capacity factor for the cohesion term"
+        source: "the Prandtl-Reissner closed form, (Nq − 1) cot φ"
+      - symbol: N_q
+        fn: hansen_Nq
+        args: [phi]
+        means: "bearing capacity factor for the surcharge term"
+        source: "Reissner's (1924) closed form"
+      - symbol: N_gamma
+        fn: hansen_Ngamma
+        args: [phi]
+        means: "bearing capacity factor for the self-weight term"
+        source: "Brinch Hansen (1970), 1.5 (Nq − 1) tan φ"
+    shape_depth: debeer_hansen
+    equation_tex: "q_u = c\\,N_c s_c d_c + q\\,N_q s_q d_q + \\tfrac{1}{2}\\gamma B N_\\gamma s_\\gamma d_\\gamma"
+    expression: "c*N_c*s_c*d_c + q_surcharge*N_q*s_q*d_q + 0.5*gamma_eff*B*N_gamma*s_gamma*d_gamma"
+    notes: "De Beer (1970) shape factors with Hansen (1970) depth factors."
+
+  - id: vesic_general
+    method: Vesic
+    label: "Vesic (1973), general equation"
+    year: 1973
+    quantity: q_ult
+    applicability:
+      failure_mechanism: [general_shear]
+      drainage: [drained, undrained]
+      footing_shape: [strip, square, rectangular, circular]
+      inclined_load: false
+    requires: [c, phi, gamma_eff, B, q_surcharge, Df]
+    factors:
+      - symbol: N_c
+        fn: vesic_Nc
+        args: [phi]
+        means: "bearing capacity factor for the cohesion term"
+        source: "the Prandtl-Reissner closed form, (Nq − 1) cot φ"
+      - symbol: N_q
+        fn: vesic_Nq
+        args: [phi]
+        means: "bearing capacity factor for the surcharge term"
+        source: "Reissner's (1924) closed form"
+      - symbol: N_gamma
+        fn: vesic_Ngamma
+        args: [phi]
+        means: "bearing capacity factor for the self-weight term"
+        source: "Vesic (1973), 2 (Nq + 1) tan φ"
+    shape_depth: debeer_hansen
+    equation_tex: "q_u = c\\,N_c s_c d_c + q\\,N_q s_q d_q + \\tfrac{1}{2}\\gamma B N_\\gamma s_\\gamma d_\\gamma"
+    expression: "c*N_c*s_c*d_c + q_surcharge*N_q*s_q*d_q + 0.5*gamma_eff*B*N_gamma*s_gamma*d_gamma"
+    notes: "De Beer (1970) shape factors with Hansen (1970) depth factors."
+
+  - id: skempton_undrained
+    method: Skempton
+    label: "Skempton (1951), undrained clay (φ = 0)"
+    year: 1951
+    quantity: q_ult
+    applicability:
+      failure_mechanism: [general_shear]
+      drainage: [undrained]
+      footing_shape: [strip, square, rectangular, circular]
+      requires_phi_zero: true
+      inclined_load: false
+    requires: [su, B, q_surcharge]
+    factors:
+      - symbol: N_c
+        fn: skempton_Nc            # special: needs B, L, Df, shape
+        args: [B, L, Df, shape]
+        means: "undrained bearing capacity factor, increasing with depth and plan shape"
+        source: "Skempton (1951) chart, strip 5(1 + 0.2 Df/B) ≤ 7.5, square or circle 6(1 + 0.2 Df/B) ≤ 9"
+    shape_depth: none
+    equation_tex: "q_u = s_u\\,N_c + q"
+    expression: "su*N_c + q_surcharge"
+    notes: "Total-stress analysis for saturated clay loaded quickly. Shape and depth are inside N_c."

@@ -1,0 +1,10 @@
+{
+    "name": "geotutor-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "build": "cd geotutor && pnpm install && pnpm build",
+        "dev": "cd geotutor && pnpm dev"
+    },
+    "packageManager": "pnpm@9.15.4"
+}
