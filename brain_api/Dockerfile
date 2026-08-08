@@ -7,7 +7,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# system deps kept minimal; matplotlib needs no GUI backend
+# system deps kept minimal; curl is needed by the entrypoint's one-time
+# index download, matplotlib needs no GUI backend
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
     MPLBACKEND=Agg \
