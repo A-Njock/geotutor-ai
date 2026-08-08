@@ -25,7 +25,15 @@ interface DesignTurn {
 }
 
 // a short question about the solved problem, not a new problem statement
-const FOLLOWUP_RE = /\?|^(why|how|what|which|explain|can you|does|is |are |and if)/i;
+const FOLLOWUP_START_RE = /^(why|how|what|which|explain|can |could |does|do |is |are |should|would|will|and if)/i;
+// number-with-unit tokens: several of these mean a full problem statement
+const NUM_UNIT_RE = /\d+(?:\.\d+)?\s*(?:m2\/(?:year|yr|s)|kn\/m3|kn\/m³|kn\/m\^3|kpa|mpa|kn|mm|cm|m\b|degrees?|deg\b|%|percent)/gi;
+
+function looksLikeFollowup(typed: string): boolean {
+  const unitCount = (typed.match(NUM_UNIT_RE) || []).length;
+  if (FOLLOWUP_START_RE.test(typed)) return unitCount <= 2;
+  return typed.includes("?") && unitCount <= 1;
+}
 
 function stepsAsContext(sol: DesignSolution): string {
   const lines: string[] = [];
@@ -86,7 +94,7 @@ export function DesignChat({ initialQuestion, sessionId }: {
 
       // 1) follow-up question about a solved problem: answer from the
       //    frozen steps, no re-solving
-      if (prev?.solution && typed.length < 260 && FOLLOWUP_RE.test(typed)) {
+      if (prev?.solution && typed.length < 260 && looksLikeFollowup(typed)) {
         setTurns((t) => [...t, { problem: typed, analysis: null, solution: null, error: null, waitingClarify: false }]);
         const fu = await followup(prev.fullProblem || prev.problem,
                                   stepsAsContext(prev.solution), typed);

@@ -1066,6 +1066,9 @@ _DOM_LABELS = {
     "dA": ("d_A", "\\text{m}"), "dB": ("d_B", "\\text{m}"),
     "dC": ("d_C", "\\text{m}"), "s": ("s", "\\text{m}"),
     "sigma_all": ("\\sigma_{all}", "\\text{kPa}"), "FS": ("FS", ""),
+    "e_void": ("e", ""), "S_r": ("S_r", ""), "Nc": ("N_c", ""),
+    "cv": ("c_v", "\\text{m}^2/\\text{yr}"), "U": ("U", ""),
+    "Dw": ("D_w", "\\text{m}"), "q_applied": ("q", "\\text{kPa}"),
 }
 
 

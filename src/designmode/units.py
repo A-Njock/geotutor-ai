@@ -20,6 +20,7 @@ CANONICAL = {
     "force": "kN",
     "angle": "degree",
     "volume": "m^3",
+    "consolidation_coeff": "m^2/year",
     "dimensionless": "",
 }
 
@@ -56,6 +57,10 @@ SYMBOL_FAMILY = {
     "ru": "dimensionless",
     # reliability inputs (standard deviations of soil parameters)
     "sigma_c": "stress", "sigma_phi": "angle", "sigma_gamma": "unit_weight",
+    # phase relations without weights; consolidation time-rate
+    "e_void": "dimensionless", "S_r": "dimensionless",
+    "Nc": "dimensionless", "U": "dimensionless",
+    "cv": "consolidation_coeff",
 }
 
 # unit spellings that pint does not accept out of the box
@@ -64,6 +69,10 @@ _UNIT_ALIASES = {
     "kn/m2": "kPa", "kn/m^2": "kPa", "kn/m²": "kPa", "kpa": "kPa",
     "mpa": "MPa", "t/m3": "tonne_force/m^3", "deg": "degree",
     "degrees": "degree", "°": "degree", "kn": "kN", "n": "N",
+    "m2/year": "m^2/year", "m2/yr": "m^2/year", "m^2/yr": "m^2/year",
+    "m2/s": "m^2/s", "m2/sec": "m^2/s", "cm2/s": "cm^2/s",
+    "cm2/sec": "cm^2/s", "mm2/s": "mm^2/s", "m2/day": "m^2/day",
+    "cm2/year": "cm^2/year", "cm2/yr": "cm^2/year",
     "": "dimensionless", None: "dimensionless",
 }
 
@@ -87,6 +96,11 @@ def normalise(sym: str, value: float, unit) -> float:
     if not target:  # dimensionless; percentages become fractions
         if str(unit).strip() in ("%", "percent", "pct"):
             return float(value) / 100.0
+        return float(value)
+    # a bare number for an angle symbol is taken as printed (degrees or a
+    # dimensionless factor like the pile adhesion alpha); pint would
+    # otherwise assume radians and silently multiply by 57.3
+    if SYMBOL_FAMILY.get(sym) == "angle" and u == "dimensionless":
         return float(value)
     q = Q_(float(value), u)
     # density given for a unit weight: make the x g explicit (U1)
@@ -124,6 +138,11 @@ BOUNDS = {
     "q_all": (0.5, 100000.0, "kPa"),
     "Q_ult": (0.1, 1e7, "kN"),
     "Q_all": (0.1, 1e7, "kN"),
+    "e_void": (0.05, 5.0, ""),
+    "S_r": (0.0, 1.000001, ""),
+    "U": (0.0, 1.000001, ""),
+    "Nc": (1.0, 100.0, ""),
+    "cv": (1e-4, 1e4, "m^2/year"),
 }
 
 

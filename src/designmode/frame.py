@@ -19,6 +19,7 @@ ALLOWED_SYMBOLS = [
     "sigma_all", "D", "Ep", "Es", "mu_s", "Qwp", "Qws", "L1", "L2",
     "x1", "x2", "x3", "x4", "x5", "alpha", "gamma_c", "gamma2", "phi2",
     "c2", "xc", "yc", "R", "ru", "sigma_c", "sigma_phi", "sigma_gamma",
+    "e_void", "S_r", "Nc", "cv", "U",
 ]
 
 FRAME_SYSTEM = """You are the problem analyst of GeoTutor, a geotechnical
@@ -67,7 +68,16 @@ Rules:
   copy as printed with its unit), phi/gamma = the upper soil layer the
   shaft passes through, phi2/gamma2 = the bearing layer at the tip,
   Ep = pile modulus, Es = soil modulus, mu_s = soil Poisson ratio,
-  Qwp/Qws = working point/shaft loads, w unused.
+  Qwp/Qws = working point/shaft loads, w unused. For a pile in clay:
+  su = undrained shear strength, alpha = adhesion factor when stated,
+  Nc = bearing capacity factor when the problem states it.
+- Sample phase relations may also be given without weights: e_void = void
+  ratio, S_r = degree of saturation (unit "%%" when given as percent).
+  e_load stays reserved for load eccentricity.
+- Consolidation: cv = coefficient of consolidation (copy with its printed
+  unit, e.g. "m^2/year"), H = clay layer thickness, U = average degree of
+  consolidation (unit "%%" when given as percent); record whether the layer
+  drains from one face or both in assumptions_made.
 - Cantilever sheet pile: L1 = depth above the water table, L2 = water table
   to dredge line.
 - Cantilever retaining wall (Das notation): H = stem height, x1 = stem top
@@ -143,6 +153,11 @@ _DOMAIN_MARKERS = [
                 r"factor of safety of (the |a |this )?slope",
                 re.IGNORECASE), "slope_stability",
      "the problem is about slope stability"),
+    (re.compile(r"coefficient of consolidation|degree of consolidation|"
+                r"\d+\s*(?:%|percent)\s*(?:of\s+)?consolidation|"
+                r"(?:time|how long|rate)[^.?]{0,60}consolidation",
+                re.IGNORECASE), "consolidation",
+     "the problem asks about the time-rate of consolidation"),
 ]
 
 
@@ -222,7 +237,13 @@ statement and the declared frame, answer strict JSON:
 {"agrees": true/false, "reason": one short sentence}
 Disagree when the frame misreads the physical regime (drained vs undrained,
 effective vs total stress), the mechanism, the requested quantity, or misreads
-a given value or its unit."""
+a given value or its unit.
+Conventions you must NOT dispute: quantity_requested has a fixed enum of
+bearing quantities, so it is correctly EMPTY for every other domain (slope
+stability, excavation, retaining walls, consolidation, phase relations);
+likewise analysis_type, drainage_condition and footing_shape are only
+meaningful for strength problems and their defaults are not misreads in
+domains where they play no role."""
 
 
 def skeptic_check(problem_text: str, frame: dict) -> dict:

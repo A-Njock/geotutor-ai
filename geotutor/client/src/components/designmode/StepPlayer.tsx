@@ -8,8 +8,9 @@ import { PhaseFigure } from "./PhaseFigure";
 import { SlopeFigure } from "./SlopeFigure";
 import { BracedCutFigure } from "./BracedCutFigure";
 import { PileFigure } from "./PileFigure";
-import { SheetPileFigure, CantileverWallFigure } from "./WallFigure";
+import { SheetPileFigure, CantileverWallFigure, WallThrustFigure } from "./WallFigure";
 import { CircleSlopeFigure } from "./CircleSlopeFigure";
+import { ConsolidationFigure } from "./ConsolidationFigure";
 import { activeNotes, compareOp } from "./figShared";
 
 // one router: every domain gets its own parametric figure component
@@ -29,6 +30,10 @@ function DesignFigure({ figure, steps, current }: {
       return <SheetPileFigure params={figure} steps={steps} current={current} />;
     case "cantilever_wall":
       return <CantileverWallFigure params={figure} steps={steps} current={current} />;
+    case "lateral_wall":
+      return <WallThrustFigure params={figure} steps={steps} current={current} />;
+    case "consolidation":
+      return <ConsolidationFigure params={figure} steps={steps} current={current} />;
     case "circular_slope":
       return <CircleSlopeFigure params={figure} steps={steps} current={current} />;
     default:

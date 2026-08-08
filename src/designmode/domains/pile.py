@@ -125,21 +125,154 @@ def _cc_k(phi, ld):
 _SIDE_RE = re.compile(r"side resistance|skin friction|shaft resistance|Q_?s\b",
                       re.IGNORECASE)
 _SETTLE_RE = re.compile(r"settlement", re.IGNORECASE)
+_ROUND_RE = re.compile(r"diameter|circular|round pile", re.IGNORECASE)
+
+
+def _section(D, problem_text):
+    """Cross-section area and perimeter; circular when the text says so."""
+    if _ROUND_RE.search(problem_text):
+        return math.pi * D * D / 4.0, math.pi * D, "circular"
+    return D * D, 4.0 * D, "square"
 
 
 def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
     if _SETTLE_RE.search(problem_text):
-        return _settlement(frame, givens, add)
+        return _settlement(frame, givens, add, problem_text)
+    # a pile in clay with undrained strength runs the alpha method
+    if givens.get("su") is not None and givens.get("phi") is None:
+        return _clay_alpha(frame, givens, add, problem_text)
     if _SIDE_RE.search(problem_text):
         return _side(frame, givens, add, problem_text)
-    return _point(frame, givens, add)
+    return _point(frame, givens, add, problem_text)
+
+
+# ---------------------------------------------------------------------------
+# pile in clay: alpha method (undrained)
+# ---------------------------------------------------------------------------
+
+def _clay_alpha(frame, givens, add, problem_text):
+    L = givens.get("L")
+    D = givens.get("D", givens.get("B"))
+    su = givens.get("su")
+    missing = [n for n, v in (("L", L), ("pile width or diameter D", D),
+                              ("su", su)) if v is None]
+    if missing:
+        return {"error": "The pile capacity in clay needs "
+                         + ", ".join(missing) + "."}
+    if D > 3.0:
+        D = D / 1000.0
+        add("assume", "Pile width read in millimetres", "setup",
+            tex=f"D = {D:g}\\ \\text{{m}}", augmented=True)
+    Ap, p, shape = _section(D, problem_text)
+    add("compute", "Cross-section area and perimeter", "setup",
+        tex=("A_p = \\tfrac{\\pi D^2}{4};\\quad p = \\pi D" if
+             shape == "circular" else "A_p = D^2;\\quad p = 4D"),
+        sub=f"A_p = {Ap:.4g}\\ \\text{{m}}^2,\\quad p = {p:.4g}\\ \\text{{m}}",
+        result={"sym": "Ap", "value": Ap, "unit": "m^2",
+                "display": f"Ap = {Ap:.4g} m²"},
+        narration=f"The pile is {shape}, which fixes the tip area the "
+                  "point load acts on and the surface the clay grips.",
+        viz=[{"op": "highlight", "target": "tip"}])
+
+    Nc = givens.get("Nc")
+    if Nc is None:
+        Nc = 9.0
+        add("assume", "Bearing capacity factor at the tip", "setup",
+            tex="N_c^* = 9", augmented=True,
+            narration="Meyerhof's value for a deep foundation in clay; "
+                      "used whenever the problem does not state one.")
+    Qp = Nc * su * Ap
+    add("compute", "Point capacity from the undrained strength",
+        "method:point",
+        tex="Q_p = N_c^*\\,s_u\\,A_p",
+        sub=f"Q_p = ({Nc:g})({su:g})({Ap:.4g})",
+        result={"sym": "Qp", "value": Qp, "unit": "kN",
+                "display": f"Qp = {display_round(Qp)} kN"},
+        provenance=[{"symbol": "Nc*", "value": Nc,
+                     "means": "deep bearing capacity factor of clay under "
+                              "undrained loading",
+                     "source": "Meyerhof (1976), the standard value for "
+                               "piles in saturated clay",
+                     "arguments": ["phi = 0 (undrained)",
+                                   f"su = {su:g} kPa at the tip"],
+                     "whyApplies": "the pile tip is far deeper than the "
+                                   "failure zone, so the deep value "
+                                   "applies"}],
+        viz=[{"op": "highlight", "target": "point_arrows"}])
+
+    alpha = givens.get("alpha")
+    if alpha is None:
+        return {"error": "The shaft resistance in clay needs the adhesion "
+                         "factor alpha (the fraction of su that acts on "
+                         "the shaft). State it, or ask for the point "
+                         "capacity alone."}
+    fs = alpha * su
+    Qs = fs * p * L
+    add("compute", "Shaft resistance by the alpha method", "method:shaft",
+        tex="Q_s = \\alpha\\,s_u\\,p\\,L",
+        sub=f"Q_s = ({alpha:g})({su:g})({p:.4g})({L:g})",
+        result={"sym": "Qs", "value": Qs, "unit": "kN",
+                "display": f"Qs = {display_round(Qs)} kN"},
+        provenance=[{"symbol": "α", "value": alpha,
+                     "means": "adhesion factor: the fraction of the "
+                              "undrained strength the clay-shaft contact "
+                              "can mobilize",
+                     "source": "stated in the problem (empirically it "
+                               "falls with su; API and Das both tabulate "
+                               "it)",
+                     "arguments": [f"su = {su:g} kPa"],
+                     "whyApplies": "remoulding and gapping along the "
+                                   "driven shaft keep the contact weaker "
+                                   "than the intact clay"}],
+        viz=[{"op": "highlight", "target": "shaft_arrows"}])
+
+    Qu = Qp + Qs
+    add("compute", "Ultimate capacity", "results",
+        tex="Q_u = Q_p + Q_s",
+        sub=f"Q_u = {display_round(Qp)} + {display_round(Qs)}",
+        result={"sym": "Qu", "value": Qu, "unit": "kN",
+                "display": f"Qu = {display_round(Qu)} kN"},
+        viz=[{"op": "highlight", "target": "tip"}])
+
+    conclusions = [{"quantity": "Q_u", "value": display_round(Qu),
+                    "unit": "kN", "governing": "alpha method"}]
+    FS = givens.get("FS")
+    if FS:
+        Qall = Qu / FS
+        add("compute", "Allowable capacity", "results",
+            tex="Q_{all} = \\tfrac{Q_u}{FS}",
+            sub=f"Q_{{all}} = \\tfrac{{{display_round(Qu)}}}{{{FS:g}}}",
+            result={"sym": "Q_all", "value": Qall, "unit": "kN",
+                    "display": f"Q_all = {display_round(Qall)} kN"},
+            viz=[{"op": "highlight", "target": "load"}])
+        conclusions.append({"quantity": "Q_all",
+                            "value": display_round(Qall), "unit": "kN",
+                            "governing": f"FS = {FS:g}", "FS": FS})
+    add("conclude", "Point and shaft together", "results",
+        narration="In soft and medium clays most of the capacity comes "
+                  "from the shaft; the tip contributes the smaller share, "
+                  "the opposite of a pile bearing in sand.",
+        viz=[{"op": "compare", "methods": [
+            {"method": "Point Qp", "q_ult": display_round(Qp)},
+            {"method": "Shaft Qs", "q_ult": display_round(Qs)}]}])
+
+    return {
+        "results": [
+            {"method": "Point Qp", "label": "Nc* su Ap (Meyerhof)",
+             "q_ult": display_round(Qp)},
+            {"method": "Shaft Qs", "label": "alpha method",
+             "q_ult": display_round(Qs)}],
+        "conclusions": conclusions,
+        "comparison": None,
+        "figure": _fig(frame, givens, L, D, "point"),
+    }
 
 
 # ---------------------------------------------------------------------------
 # ultimate point load: Meyerhof / Coyle & Castello / Vesic
 # ---------------------------------------------------------------------------
 
-def _point(frame, givens, add):
+def _point(frame, givens, add, problem_text=""):
     L = givens.get("L")
     D = givens.get("D", givens.get("B"))
     phi1, gamma1 = givens.get("phi"), givens.get("gamma")
@@ -156,7 +289,7 @@ def _point(frame, givens, add):
         add("assume", "Pile width read in millimetres", "setup",
             tex=f"D = {D:g}\\ \\text{{m}}", augmented=True)
 
-    Ap = D * D
+    Ap, _p, _shape = _section(D, problem_text)
     qp = gamma1 * L  # effective stress at the tip (shaft crosses layer 1)
     add("compute", "Effective vertical stress at the pile tip", "setup",
         tex="q' = \\gamma L",
@@ -318,7 +451,7 @@ def _side(frame, givens, add, problem_text):
                          "gamma of the shaft soil."}
     if D > 3.0:
         D = D / 1000.0
-    p = 4.0 * D
+    _Ap, p, _shape = _section(D, problem_text)
     K = givens.get("delta") and None  # placeholder, K comes from text or 1.3
     mK = re.search(r"K\s*=\s*([\d.]+)", problem_text)
     K = float(mK.group(1)) if mK else 1.3
@@ -402,7 +535,7 @@ def _side(frame, givens, add, problem_text):
 # elastic settlement
 # ---------------------------------------------------------------------------
 
-def _settlement(frame, givens, add):
+def _settlement(frame, givens, add, problem_text=""):
     L = givens.get("L")
     D = givens.get("D", givens.get("B"))
     Qwp, Qws = givens.get("Qwp"), givens.get("Qws")
@@ -417,8 +550,7 @@ def _settlement(frame, givens, add):
         mu = 0.38
         add("assume", "Soil Poisson ratio", "setup", tex="\\mu_s = 0.38",
             augmented=True)
-    Ap = D * D
-    p = 4.0 * D
+    Ap, p, _shape = _section(D, problem_text)
     xi = 0.57
     Iwp = 0.85
 

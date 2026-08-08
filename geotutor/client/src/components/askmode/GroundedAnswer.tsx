@@ -202,12 +202,12 @@ function PassportCard({ passport }: { passport: Passport }) {
       )}
       <div className="flex flex-wrap gap-2 px-4 py-2.5">
         {passport.valid.map((c, i) => (
-          <span key={i} className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+          <span key={i} className="inline-block max-w-full break-words font-mono text-[11px] px-2.5 py-0.5 rounded-2xl bg-blue-50 text-blue-700">
             valid: <MathTex tex={c} />
           </span>
         ))}
         {passport.not_valid.map((c, i) => (
-          <span key={i} className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700">
+          <span key={i} className="inline-block max-w-full break-words font-mono text-[11px] px-2.5 py-0.5 rounded-2xl bg-orange-50 text-orange-700">
             not valid: <MathTex tex={c} />
           </span>
         ))}

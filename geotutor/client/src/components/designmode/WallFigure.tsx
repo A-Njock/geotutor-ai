@@ -117,6 +117,115 @@ export function SheetPileFigure({
   );
 }
 
+// Simple wall with the Rankine pressure diagram: for lateral-thrust
+// problems that give only the height and the soil (active or passive,
+// optional cohesion with its tension crack, optional water table).
+export function WallThrustFigure({
+  params, steps, current,
+}: {
+  params: FigureParams; steps: DesignStep[]; current: number;
+}) {
+  const hl = activeTargets(steps, current);
+  const Hm = (params.H as number) || 6;
+  const Dw = params.Dw as number | null;
+  const zc = params.zc as number | null;
+  const passive = Boolean(params.passive);
+  const GY = 84;
+  const BY = 388;
+  const scale = (BY - GY) / Hm;
+  const sy = (d: number) => GY + d * scale;
+  const wx = 330;
+  const dirRight = passive; // passive pushes the soil, drawn mirrored
+  const diagW = 130;
+  const crackY = zc ? sy(Math.min(zc, Hm)) : GY;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" role="img"
+      aria-label="Wall with its lateral earth pressure diagram">
+      <defs>
+        <pattern id="soilHatchThrust" width="10" height="10" patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="10" stroke={FIG.SOIL_HATCH} strokeWidth="0.7" opacity="0.4" />
+        </pattern>
+        <marker id="arrThrust" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6"
+          markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill={FIG.SLIP} />
+        </marker>
+      </defs>
+
+      {/* retained soil to the right of the wall */}
+      <rect x={wx} y={GY} width={W - wx - 36} height={BY - GY} fill={FIG.SOIL_FILL} />
+      <rect x={wx} y={GY} width={W - wx - 36} height={BY - GY} fill="url(#soilHatchThrust)" />
+      <line x1={wx} y1={GY} x2={W - 28} y2={GY} stroke={FIG.INK} strokeWidth="2.2" />
+      <line x1={80} y1={BY} x2={W - 28} y2={BY} stroke={FIG.INK} strokeWidth="2" />
+
+      {/* water table inside the wall height */}
+      {Dw != null && (
+        <g>
+          <line x1={wx} y1={sy(Dw)} x2={W - 28} y2={sy(Dw)} stroke={FIG.WATER}
+            strokeWidth="1.6" strokeDasharray="8 5" />
+          <path d={`M ${W - 70} ${sy(Dw) - 12} l 12 0 l -6 10 z`} fill={FIG.WATER} />
+          <text x={W - 34} y={sy(Dw) - 8} fontSize="14.5" fill={FIG.WATER}
+            textAnchor="end" fontFamily="system-ui" {...halo}>{`Dw = ${Dw} m`}</text>
+        </g>
+      )}
+
+      {/* the wall */}
+      <rect x={wx - 14} y={GY - 12} width={14} height={BY - GY + 12}
+        fill={hl.has("wall") ? "#fde68a" : "#d6d9de"}
+        stroke={FIG.INK} strokeWidth="1.8" />
+
+      {/* tension crack zone (cohesive active): no push above zc */}
+      {zc != null && zc > 0 && (
+        <g opacity={hl.has("crack") ? 1 : 0.75}>
+          <path d={`M ${wx + 3} ${GY} l 5 ${(crackY - GY) * 0.35} l -7 ${(crackY - GY) * 0.3} l 5 ${(crackY - GY) * 0.35}`}
+            stroke={FIG.AMBER} strokeWidth="2.2" fill="none" />
+          <text x={wx + 16} y={(GY + crackY) / 2 + 4} fontSize="14.5" fill={FIG.AMBER}
+            fontFamily="system-ui" {...halo}>{`tension crack z_c = ${zc} m`}</text>
+        </g>
+      )}
+
+      {/* pressure diagram: triangle (or trapezoid start at crack depth) */}
+      <g opacity={hl.has("active") || hl.has("resultant") ? 1 : 0.55}>
+        <polygon
+          points={`${wx},${crackY} ${wx + diagW},${BY} ${wx},${BY}`}
+          fill={dirRight ? FIG.WATER : FIG.SLIP} fillOpacity="0.15"
+          stroke={dirRight ? FIG.WATER : FIG.SLIP} strokeWidth="1.5" />
+        {[0.5, 0.8].map((f) => (
+          <line key={f}
+            x1={wx + diagW * f} y1={crackY + (BY - crackY) * f}
+            x2={wx + 6} y2={crackY + (BY - crackY) * f}
+            stroke={FIG.SLIP} strokeWidth="1.6" markerEnd="url(#arrThrust)" />
+        ))}
+        <text x={wx + diagW + 10} y={BY - 4} fontSize="15" fill={FIG.SLIP}
+          fontFamily="system-ui" {...halo}>{`σ@base = ${params.sigma_base} kPa`}</text>
+      </g>
+
+      {/* resultant thrust arrow at zbar above the base */}
+      <g opacity={hl.has("resultant") ? 1 : 0.85}>
+        <line x1={wx + 96} y1={BY - ((params.zbar as number) || Hm / 3) * scale}
+          x2={wx - 18} y2={BY - ((params.zbar as number) || Hm / 3) * scale}
+          stroke={FIG.AMBER} strokeWidth="3.4" markerEnd="url(#arrThrust)" />
+        <text x={wx + 104} y={BY - ((params.zbar as number) || Hm / 3) * scale + 5}
+          fontSize="15.5" fill={FIG.AMBER} fontFamily="system-ui" {...halo}>
+          {`${passive ? "Pp" : "Pa"} = ${params.P} kN/m at ${params.zbar} m`}
+        </text>
+      </g>
+
+      {/* dimensions and soil labels */}
+      <g stroke={FIG.DIM} strokeWidth="1.1">
+        <line x1={wx - 46} y1={GY} x2={wx - 46} y2={BY} />
+      </g>
+      <text x={wx - 56} y={(GY + BY) / 2} fontSize="15.5" fill={FIG.DIM}
+        textAnchor="end" fontFamily="system-ui" {...halo}>{`H = ${Hm} m`}</text>
+      <text x={wx + 24} y={H - 22} fontSize="15.5" fill={FIG.SOIL_HATCH}
+        fontFamily="system-ui" {...halo}>
+        {`γ = ${params.gamma} kN/m³   ${(params.phi as number) > 0 ? `φ = ${params.phi}°` : ""}   ${(params.c as number) > 0 ? `c = ${params.c} kPa` : ""}${(params.q as number) > 0 ? `   q = ${params.q} kPa` : ""}`}
+      </text>
+    </svg>
+  );
+}
+
 export function CantileverWallFigure({
   params, steps, current,
 }: {

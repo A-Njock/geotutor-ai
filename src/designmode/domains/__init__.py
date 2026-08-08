@@ -8,7 +8,7 @@ domain. Every number a builder emits is computed here in full precision,
 never recalled from a model.
 """
 
-from . import basics, braced, pile, retaining, slope
+from . import basics, braced, consolidation, pile, retaining, slope
 
 DOMAIN_BUILDERS = {
     "soil_basics": basics.build,
@@ -16,6 +16,7 @@ DOMAIN_BUILDERS = {
     "excavation": braced.build,
     "pile_foundation": pile.build,
     "retaining_wall": retaining.build,
+    "consolidation": consolidation.build,
 }
 
 # label shown in the "Applicable" chip before solving
@@ -25,4 +26,5 @@ DOMAIN_METHOD_LABEL = {
     "excavation": "Peck apparent-pressure envelope",
     "pile_foundation": "Pile capacity and settlement",
     "retaining_wall": "Retaining structures",
+    "consolidation": "Terzaghi time-rate of consolidation",
 }

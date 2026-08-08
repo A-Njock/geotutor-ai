@@ -74,4 +74,6 @@ PAPER_NOTES.md
 GeoTutor_Technical_Presentation.md
 list_models.py
 test_sdk.py
-*.png
+# generated images only; never app assets like geotutor/client/public/*.png
+outputs/*.png
+/*.png
