@@ -219,6 +219,31 @@ _FOLLOWUP_SYSTEM = (
     "composer.'"
 )
 
+class FeedbackRequest(BaseModel):
+    mode: str           # "chat" | "design"
+    rating: str         # "up" | "down"
+    question: str
+    answer: str
+
+
+@api.post("/feedback")
+async def feedback(request: FeedbackRequest):
+    """Thumbs rating on an answer. Down-votes accumulate on the volume and
+    are emailed to the maintainer in batches; see brain_api/feedback.py."""
+    if request.rating not in ("up", "down") or \
+            request.mode not in ("chat", "design"):
+        raise HTTPException(status_code=422, detail="invalid rating")
+    from .feedback import record
+    try:
+        out = await asyncio.to_thread(
+            record, request.mode, request.rating,
+            request.question, request.answer)
+        return {"ok": True, **out}
+    except Exception as e:
+        print(f"[feedback] failed to record: {e}")
+        return {"ok": False}
+
+
 @api.post("/design/followup")
 async def design_followup(request: DesignFollowupRequest):
     from src.designmode.llm import chat_text

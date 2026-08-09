@@ -6,6 +6,7 @@ import { Loader2, ArrowUp } from "lucide-react";
 import { ModeSelector } from "@/components/modes/ModeSelector";
 import { readSessionData, saveSessionData } from "@/components/modes/registry";
 import { ClarifyCard } from "./ClarifyCard";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { StepPlayer } from "./StepPlayer";
 import { useDesign } from "./useDesign";
 import { DesignAnalysis, DesignSolution } from "./types";
@@ -203,12 +204,28 @@ export function DesignChat({ initialQuestion, sessionId }: {
           )}
 
           {turn.followupAnswer && (
-            <div className="max-w-[92%] rounded-2xl rounded-bl-sm border border-primary/20 bg-primary/5 px-5 py-3 text-[15px] leading-relaxed text-foreground">
-              {turn.followupAnswer}
+            <div className="flex flex-col gap-1">
+              <div className="max-w-[92%] rounded-2xl rounded-bl-sm border border-primary/20 bg-primary/5 px-5 py-3 text-[15px] leading-relaxed text-foreground">
+                {turn.followupAnswer}
+              </div>
+              <FeedbackButtons
+                mode="design"
+                question={turn.problem}
+                answer={turn.followupAnswer}
+              />
             </div>
           )}
 
-          {turn.solution && <StepPlayer solution={turn.solution} />}
+          {turn.solution && (
+            <div className="flex flex-col gap-1">
+              <StepPlayer solution={turn.solution} />
+              <FeedbackButtons
+                mode="design"
+                question={turn.fullProblem || turn.problem}
+                answer={stepsAsContext(turn.solution)}
+              />
+            </div>
+          )}
 
           {turn.error && (
             /maintenance/i.test(turn.error) ? (

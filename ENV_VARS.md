@@ -16,6 +16,12 @@ GEMINI_API_KEY=<set in Railway variables>
 # Optional: URL of a tar.gz with the Mode 1 library index, downloaded on
 # first boot into the mounted volume (see DEPLOY.md)
 INDEX_ARCHIVE_URL=<optional>
+# Feedback reports (thumbs-down batches emailed to the maintainer).
+# Without RESEND_API_KEY the ratings still accumulate on the volume and
+# the email is sent once the key is added.
+RESEND_API_KEY=<optional, from resend.com>
+FEEDBACK_EMAIL_TO=<optional, defaults to the maintainer address>
+FEEDBACK_BATCH_SIZE=<optional, defaults to 10>
 ```
 
 ## Web app service (geotutor)

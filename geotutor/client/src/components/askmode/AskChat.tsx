@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ArrowUp } from "lucide-react";
 import { GroundedAnswer } from "./GroundedAnswer";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { useGroundedAsk } from "./useGroundedAsk";
 import { GroundedResult } from "./types";
 import { ModeSelector } from "@/components/modes/ModeSelector";
@@ -116,7 +117,16 @@ export function AskChat({
 
           {/* answer / loading / error */}
           {turn.result ? (
-            <GroundedAnswer result={turn.result} />
+            <div className="flex flex-col gap-1">
+              <GroundedAnswer result={turn.result} />
+              <FeedbackButtons
+                mode="chat"
+                question={turn.question}
+                answer={turn.result.sub_answers
+                  .map((s) => s.answer_markdown)
+                  .join("\n\n")}
+              />
+            </div>
           ) : turn.error ? (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm">
               <p className="text-red-800 font-medium m-0">The tutor could not answer</p>
