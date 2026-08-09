@@ -20,7 +20,7 @@ export interface DesignAnalysis {
   givens: Record<string, number>;
   repairs: string[];
   violations: string[];
-  skeptic: { agrees: boolean; reason: string };
+  skeptic: { agrees: boolean; reason: string } | null;
   methods: { id: string; label: string; method: string }[];
   rejections: string[];
   questions: ClarifyQuestion[];

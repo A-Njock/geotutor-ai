@@ -35,7 +35,7 @@ def _pretty_sym(sym: str) -> str:
 # analyze
 # ---------------------------------------------------------------------------
 
-def analyze(problem_text: str) -> dict:
+def analyze(problem_text: str, defer_skeptic: bool = False) -> dict:
     frame = frame_problem(problem_text)
     if not frame.get("in_scope", False):
         return {"ok": False,
@@ -50,7 +50,10 @@ def analyze(problem_text: str) -> dict:
         repairs += r2
         violations = v2
 
-    skeptic = skeptic_check(problem_text, frame)
+    # the skeptic is an independent LLM call; deferred, it runs inside
+    # solve() in parallel with the narration overlay, cutting one full
+    # model round-trip out of the user's wait without losing the check
+    skeptic = None if defer_skeptic else skeptic_check(problem_text, frame)
     givens, given_problems = bind_givens(frame)
 
     # a given outside its physical bounds is an input error, not something
@@ -121,6 +124,27 @@ def _filter_requested_method(frame: dict, methods: list[dict],
 # ---------------------------------------------------------------------------
 
 def solve(problem_text: str, analysis: dict, answers: dict | None = None) -> dict:
+    """Public entry: when analyze() deferred the skeptic, run it here on a
+    thread so it overlaps the narration model call instead of adding a
+    round-trip of its own."""
+    holder = {}
+    thread = None
+    if analysis.get("skeptic") is None and analysis.get("frame"):
+        import threading as _threading
+
+        def _run():
+            holder["skeptic"] = skeptic_check(problem_text, analysis["frame"])
+        thread = _threading.Thread(target=_run, daemon=True)
+        thread.start()
+    out = _solve_impl(problem_text, analysis, answers)
+    if thread is not None:
+        thread.join(timeout=120)
+        if out.get("ok") and isinstance(out.get("audit"), dict):
+            out["audit"]["skeptic"] = holder.get("skeptic")
+    return out
+
+
+def _solve_impl(problem_text: str, analysis: dict, answers: dict | None = None) -> dict:
     frame, givens = analysis["frame"], dict(analysis["givens"])
     notes = []
     # a chosen part of a multi-part problem is re-framed on that part alone,

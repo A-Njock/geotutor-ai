@@ -79,6 +79,18 @@ async def startup_event():
     else:
         print("[Startup] WARNING: ChromaDB not available - retrieval will fail")
 
+    # warm the Ask-mode models in the background so the FIRST chat query
+    # does not pay the embedder + reranker load time (15-20 s cold)
+    def _warm_retriever():
+        try:
+            from src.askmode.retrieval import get_retriever
+            r = get_retriever()
+            r._rerank("warmup", [(0, "warmup passage")])
+            print("[Startup] Ask-mode retriever and reranker warmed.")
+        except Exception as e:
+            print(f"[Startup] retriever warmup skipped: {e}")
+    Thread(target=_warm_retriever, daemon=True).start()
+
 # CORS middleware for TypeScript backend to call
 api.add_middleware(
     CORSMiddleware,
@@ -154,6 +166,9 @@ async def ask_grounded(request: GroundedAskRequest):
 # ---------------------------------------------------------------------------
 class DesignAnalyzeRequest(BaseModel):
     problem: str
+    # when true, the skeptic LLM call moves into /design/solve where it
+    # runs in parallel with the narration call (one less serial wait)
+    defer_skeptic: bool = False
 
 class DesignSolveRequest(BaseModel):
     problem: str
@@ -178,7 +193,8 @@ def _safe_failure(e: Exception, where: str) -> dict:
 async def design_analyze(request: DesignAnalyzeRequest):
     from src.designmode.solver import analyze as design_analyze_fn
     try:
-        return await asyncio.to_thread(design_analyze_fn, request.problem)
+        return await asyncio.to_thread(design_analyze_fn, request.problem,
+                                       request.defer_skeptic)
     except Exception as e:
         return _safe_failure(e, "design/analyze")
 

@@ -159,7 +159,7 @@ export function EvidenceBorehole({ strata, evidence, activeN, onHover, onSelect,
       <div className="font-mono text-[11px] text-gray-500">
         evidence depth:{" "}
         <span className={
-          evidence === "strong" ? "text-green-600 font-semibold" :
+          evidence === "strong" ? "text-blue-700 font-semibold" :
           evidence === "adequate" ? "text-amber-600 font-semibold" :
           "text-red-500 font-semibold"
         }>

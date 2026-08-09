@@ -78,8 +78,17 @@ export function DesignChat({ initialQuestion, sessionId }: {
       setTurns((t) => {
         const copy = [...t];
         const last = { ...copy[copy.length - 1], waitingClarify: false };
-        if (res.data?.ok) last.solution = res.data;
-        else last.error = res.data?.message || res.error || "The solver could not finish.";
+        if (res.data?.ok) {
+          last.solution = res.data;
+          // the deferred skeptic verdict arrives with the solution
+          const skeptic = (res.data as { audit?: { skeptic?: DesignAnalysis["skeptic"] } })
+            .audit?.skeptic;
+          if (skeptic && last.analysis) {
+            last.analysis = { ...last.analysis, skeptic };
+          }
+        } else {
+          last.error = res.data?.message || res.error || "GeoTutor could not finish this one.";
+        }
         copy[copy.length - 1] = last;
         return copy;
       });

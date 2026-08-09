@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Loader2, User, LogOut, Mic, ArrowUp } from "lucide-react";
+import { Loader2, User, LogOut, Mic, ArrowUp, Menu } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -36,6 +36,7 @@ export default function Home() {
   // set when the thread belongs to a history session (new or reopened)
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionMode, setSessionMode] = useState<ModeId | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mode, setMode] = useState<ModeId>(DEFAULT_MODE);
   const [newProjectData, setNewProjectData] = useState({
     title: "",
@@ -177,17 +178,21 @@ export default function Home() {
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <Sidebar
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
         // a new task returns to the composer, where the mode can be chosen again
         onNewTask={() => {
           setChatQuestion(null);
           setSessionId(null);
           setSessionMode(null);
+          setSidebarOpen(false);
         }}
         // a history click reopens that conversation from its saved thread
         onOpenSession={(s) => {
           setSessionMode(s.mode);
           setSessionId(s.id);
           setChatQuestion(null);
+          setSidebarOpen(false);
         }}
         onNewProject={() => setShowNewProject(true)}
         selectedProject={selectedProject}
@@ -199,16 +204,27 @@ export default function Home() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="border-b bg-background px-6 py-3 flex items-center justify-between">
+        <header className="border-b bg-background px-3 sm:px-6 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden shrink-0"
+            aria-label="Open menu"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
           <div className="flex-1 text-center">
             <h2 className="text-sm font-medium text-muted-foreground">
               GeoTutor 1.6 Lite
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/profile")}>
-              <User className="w-4 h-4 mr-2" />
-              {user?.name || user?.email}
+              <User className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline truncate max-w-[160px]">
+                {user?.name || user?.email}
+              </span>
             </Button>
             <Button variant="ghost" size="sm" onClick={() => {
               localStorage.removeItem("geotutor-guest-session");
@@ -225,7 +241,7 @@ export default function Home() {
           {/* Conversation thread: replaces the hero once a question is asked
               or a history entry is reopened */}
           {chatQuestion !== null || sessionId ? (
-            <div className="px-6 py-8">
+            <div className="px-3 sm:px-6 py-8">
               {(sessionMode ?? mode) === "design" ? (
                 <DesignChat key={sessionId ?? "new"}
                   initialQuestion={chatQuestion ?? ""}
@@ -238,7 +254,7 @@ export default function Home() {
               )}
             </div>
           ) : (
-          <div className="max-w-3xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-full">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 flex flex-col items-center justify-center min-h-full">
             {/* Task Progress - shown if project selected */}
             {selectedProject && (
               <div className="w-full mb-8">

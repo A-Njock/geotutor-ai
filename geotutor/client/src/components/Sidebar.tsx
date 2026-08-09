@@ -19,9 +19,12 @@ interface SidebarProps {
     onSelectProject: (id: number | null) => void;
     userMode: "student" | "teacher";
     onModeChange: (mode: "student" | "teacher") => void;
+    // small screens: the sidebar becomes a slide-in drawer
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
 }
 
-export function Sidebar({ onNewTask, onNewProject, onOpenSession, selectedProject, onSelectProject, userMode, onModeChange }: SidebarProps) {
+export function Sidebar({ onNewTask, onNewProject, onOpenSession, selectedProject, onSelectProject, userMode, onModeChange, mobileOpen = false, onMobileClose }: SidebarProps) {
     const [location, setLocation] = useLocation();
     const [showModeMenu, setShowModeMenu] = useState(false);
     const [showCodeDialog, setShowCodeDialog] = useState(false);
@@ -71,7 +74,20 @@ export function Sidebar({ onNewTask, onNewProject, onOpenSession, selectedProjec
 
     return (
         <>
-            <div className="w-60 border-r bg-sidebar border-sidebar-border flex flex-col h-screen">
+            {/* backdrop while the drawer is open on small screens */}
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+                    onClick={onMobileClose}
+                    aria-hidden="true"
+                />
+            )}
+            <div className={
+                "w-60 border-r bg-sidebar border-sidebar-border flex flex-col h-screen " +
+                "fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 " +
+                "lg:static lg:z-auto lg:translate-x-0 " +
+                (mobileOpen ? "translate-x-0" : "-translate-x-full")
+            }>
                 {/* Logo & App Name */}
                 <div className="p-4 border-b border-sidebar-border">
                     <GeoTutorLogo size="md" showText={true} />

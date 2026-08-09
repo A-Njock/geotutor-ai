@@ -30,7 +30,10 @@ export function useDesign() {
     setIsLoading(true);
     setStage("Reading your problem…");
     try {
-      const data = await post<DesignAnalysis>("/design/analyze", { problem });
+      // defer_skeptic: the frame check runs during solve, in parallel with
+      // the narration call, so the reader waits one model round-trip less
+      const data = await post<DesignAnalysis>("/design/analyze",
+        { problem, defer_skeptic: true });
       return { data, error: null as string | null };
     } catch (e) {
       return { data: null as DesignAnalysis | null, error: e instanceof Error ? e.message : String(e) };

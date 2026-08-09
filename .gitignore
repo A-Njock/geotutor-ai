@@ -72,6 +72,7 @@ vendor/
 .playwright-mcp/
 PAPER_NOTES.md
 GeoTutor_Technical_Presentation.md
+GEOTUTOR_TECHNICAL_REPORT.md
 list_models.py
 test_sdk.py
 # generated images only; never app assets like geotutor/client/public/*.png
