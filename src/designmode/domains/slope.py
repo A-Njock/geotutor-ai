@@ -16,9 +16,14 @@ _INFINITE_RE = re.compile(
 _CIRCULAR_RE = re.compile(
     r"circular|method of slices|trial circle|swedish|fellenius",
     re.IGNORECASE)
+_CULMANN_RE = re.compile(
+    r"culmann|plane failure|planar (failure|slip|surface)|"
+    r"failure plane through the toe", re.IGNORECASE)
 
 
 def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
+    if _CULMANN_RE.search(problem_text):
+        return _culmann(frame, givens, add, problem_text)
     if _REL_RE.search(problem_text):
         return _tspm(frame, givens, add, problem_text)
     if _DESIGN_RE.search(problem_text) and givens.get("beta") is None:
@@ -140,6 +145,214 @@ def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
             "template": "infinite_slope",
             "beta": beta, "z": z, "c": c, "phi": phi, "gamma": gamma,
         },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Culmann's method: plane failure surface through the toe of a finite slope
+# ---------------------------------------------------------------------------
+
+_HCR_RE = re.compile(r"critical height|maximum (height|depth)|"
+                     r"how (high|deep)", re.IGNORECASE)
+
+
+def _culmann_cd(gamma, H, beta_r, phid_r):
+    """Developed cohesion demanded by the critical plane (Das eq. form):
+    cd = gamma H [1 - cos(beta - phid)] / (4 sin(beta) cos(phid))."""
+    return (gamma * H * (1.0 - math.cos(beta_r - phid_r))
+            / (4.0 * math.sin(beta_r) * math.cos(phid_r)))
+
+
+def _culmann(frame, givens, add, problem_text):
+    c = givens.get("c", givens.get("c_prime", givens.get("su")))
+    phi = givens.get("phi", 0.0) or 0.0
+    gamma = givens.get("gamma")
+    beta = givens.get("beta")
+    H = givens.get("H", givens.get("z"))
+    FS = givens.get("FS")
+    missing = [n for n, v in (("c (or su)", c), ("gamma", gamma),
+                              ("the slope angle beta", beta)) if v is None]
+    if missing:
+        return {"error": "Culmann's method needs " + ", ".join(missing)
+                         + " in addition to phi (zero for undrained clay)."}
+
+    b_r = math.radians(beta)
+    p_r = math.radians(phi)
+
+    add("explain", "Culmann's idealization: a plane through the toe",
+        "setup",
+        narration="Culmann assumes the slope fails as a rigid wedge "
+                  "sliding on a PLANE through the toe. Among all such "
+                  "planes there is one that demands the most shear "
+                  "strength; the method works directly with that most "
+                  "critical plane. It suits steep or near-vertical cuts, "
+                  "where the real surface is close to a plane; for flat "
+                  "slopes a circular surface is more critical.",
+        augmented=True,
+        viz=[{"op": "highlight", "target": "plane"}])
+
+    if c == 0.0:
+        # cohesionless: the critical plane approaches the face and the
+        # classical result collapses to the friction ratio
+        Fs = math.tan(p_r) / math.tan(b_r)
+        add("compute", "Cohesionless soil: friction alone resists",
+            "results",
+            tex="FS = \\tfrac{\\tan\\phi'}{\\tan\\beta}",
+            sub=f"FS = \\tfrac{{\\tan {phi:g}^\\circ}}{{\\tan {beta:g}"
+                f"^\\circ}}",
+            result={"sym": "Fs", "value": Fs, "unit": "",
+                    "display": f"FS = {display_round(Fs, 3)}"},
+            narration="With no cohesion the critical plane lies at the "
+                      "slope face itself, and stability reduces to "
+                      "friction against the slope angle, exactly as in "
+                      "an infinite slope.",
+            viz=[{"op": "highlight", "target": "plane"}])
+        return {
+            "results": [],
+            "conclusions": [{"quantity": "FS", "value": display_round(Fs, 3),
+                             "unit": "", "governing": "Culmann, c = 0"}],
+            "comparison": None,
+            "figure": {"template": "culmann", "H": H or 10.0,
+                       "beta": beta, "theta": beta, "gamma": gamma,
+                       "phi": phi, "c": 0, "Fs": display_round(Fs, 3)},
+        }
+
+    if H is None:
+        # no height given: the ask is the greatest depth the cut can stand
+        fs_use = FS or 1.0
+        phid = math.atan(math.tan(p_r) / fs_use)
+        cd = c / fs_use
+        theta_cr = (beta + math.degrees(phid)) / 2.0
+        if fs_use != 1.0:
+            add("compute", "Developed strength at the target factor of "
+                "safety", "setup",
+                tex="c_d = \\tfrac{c}{FS};\\quad "
+                    "\\tan\\phi_d = \\tfrac{\\tan\\phi}{FS}",
+                sub=(f"c_d = \\tfrac{{{c:g}}}{{{fs_use:g}}} = "
+                     f"{display_round(cd)};\\quad "
+                     f"\\phi_d = {math.degrees(phid):.2f}^\\circ"),
+                result={"sym": "cd", "value": cd, "unit": "kPa",
+                        "display": f"c_d = {display_round(cd)} kPa"},
+                narration="Both strength components are divided by the "
+                          "same factor, so cohesion and friction are "
+                          "mobilized in equal proportion.",
+                viz=[{"op": "highlight", "target": "plane"}])
+        add("compute", "The most critical plane", "setup",
+            tex="\\theta_{cr} = \\tfrac{\\beta + \\phi_d}{2}",
+            sub=(f"\\theta_{{cr}} = \\tfrac{{{beta:g} + "
+                 f"{math.degrees(phid):.2f}}}{{2}}"),
+            result={"sym": "theta", "value": theta_cr, "unit": "degree",
+                    "display": f"θcr = {display_round(theta_cr, 2)}°"},
+            narration="Setting the derivative of the demanded cohesion "
+                      "with respect to the plane angle to zero puts the "
+                      "critical plane exactly halfway between the slope "
+                      "face and the developed friction angle.",
+            viz=[{"op": "highlight", "target": "plane"}])
+        Hmax = (4.0 * cd * math.sin(b_r) * math.cos(phid)
+                / (gamma * (1.0 - math.cos(b_r - phid))))
+        label = ("H_{cr}" if fs_use == 1.0 else "H_{max}")
+        add("compute", "Greatest stable depth of the cut", "results",
+            tex=(label + " = \\tfrac{4c_d\\,\\sin\\beta\\,\\cos\\phi_d}"
+                 "{\\gamma[1 - \\cos(\\beta - \\phi_d)]}"),
+            sub=(f"H = \\tfrac{{4({display_round(cd)})\\sin {beta:g}"
+                 f"^\\circ\\cos {math.degrees(phid):.2f}^\\circ}}"
+                 f"{{{gamma:g}[1 - \\cos({beta:g} - "
+                 f"{math.degrees(phid):.2f})^\\circ]}}"),
+            result={"sym": "Hcr", "value": Hmax, "unit": "m",
+                    "display": f"H = {display_round(Hmax, 3)} m"},
+            narration="At this depth the most critical plane demands "
+                      "exactly the strength the soil can develop; any "
+                      "deeper and the wedge slides.",
+            viz=[{"op": "highlight", "target": "wedge"}])
+        which = ("critical height (FS = 1)" if fs_use == 1.0
+                 else f"maximum depth at FS = {fs_use:g}")
+        return {
+            "results": [],
+            "conclusions": [
+                {"quantity": "H_cr" if fs_use == 1.0 else "H_max",
+                 "value": display_round(Hmax, 3), "unit": "m",
+                 "governing": f"Culmann, {which}"},
+                {"quantity": "theta_cr",
+                 "value": display_round(theta_cr, 2), "unit": "degrees",
+                 "governing": "critical plane"}],
+            "comparison": None,
+            "figure": {"template": "culmann", "H": display_round(Hmax, 2),
+                       "beta": beta, "theta": display_round(theta_cr, 1),
+                       "gamma": gamma, "phi": phi, "c": c,
+                       "Fs": fs_use},
+        }
+
+    # height given: find the factor of safety with Fc = Fphi (iterated)
+    add("explain", "Equal mobilization of cohesion and friction", "setup",
+        narration="The factor of safety divides BOTH strength "
+                  "components: the developed friction angle falls as FS "
+                  "rises, which moves the critical plane and changes the "
+                  "cohesion demand. The consistent FS is found by "
+                  "iterating until the cohesion factor equals the "
+                  "friction factor.",
+        augmented=True,
+        viz=[{"op": "highlight", "target": "plane"}])
+
+    def g(F):
+        phid = math.atan(math.tan(p_r) / F)
+        return c / _culmann_cd(gamma, H, b_r, phid) - F
+
+    lo, hi = 0.05, 0.06
+    while g(hi) > 0 and hi < 100.0:
+        hi *= 1.6
+    for _ in range(120):
+        mid = (lo + hi) / 2.0
+        if g(mid) > 0:
+            lo = mid
+        else:
+            hi = mid
+    Fs = (lo + hi) / 2.0
+    phid = math.atan(math.tan(p_r) / Fs)
+    cd = _culmann_cd(gamma, H, b_r, phid)
+    theta_cr = (beta + math.degrees(phid)) / 2.0
+
+    add("compute", "The most critical plane at the converged FS", "setup",
+        tex="\\theta_{cr} = \\tfrac{\\beta + \\phi_d}{2}",
+        sub=(f"\\phi_d = \\arctan(\\tfrac{{\\tan {phi:g}^\\circ}}"
+             f"{{{Fs:.3f}}}) = {math.degrees(phid):.2f}^\\circ"
+             f"\\;\\Rightarrow\\; \\theta_{{cr}} = "
+             f"{theta_cr:.2f}^\\circ"),
+        result={"sym": "theta", "value": theta_cr, "unit": "degree",
+                "display": f"θcr = {display_round(theta_cr, 2)}°"},
+        viz=[{"op": "highlight", "target": "plane"}])
+    add("compute", "Cohesion the critical plane demands", "setup",
+        tex="c_d = \\tfrac{\\gamma H[1 - \\cos(\\beta - \\phi_d)]}"
+            "{4\\sin\\beta\\cos\\phi_d}",
+        sub=(f"c_d = \\tfrac{{{gamma:g}({H:g})[1 - \\cos({beta:g} - "
+             f"{math.degrees(phid):.2f})^\\circ]}}{{4\\sin {beta:g}"
+             f"^\\circ\\cos {math.degrees(phid):.2f}^\\circ}} = "
+             f"{display_round(cd, 3)}"),
+        result={"sym": "cd", "value": cd, "unit": "kPa",
+                "display": f"c_d = {display_round(cd, 3)} kPa"},
+        viz=[{"op": "highlight", "target": "plane"}])
+    add("compute", "Factor of safety where both factors meet", "results",
+        tex="FS = \\tfrac{c}{c_d} = \\tfrac{\\tan\\phi}{\\tan\\phi_d}",
+        sub=(f"FS = \\tfrac{{{c:g}}}{{{display_round(cd, 3)}}} = "
+             f"\\tfrac{{\\tan {phi:g}^\\circ}}"
+             f"{{\\tan {math.degrees(phid):.2f}^\\circ}}"),
+        result={"sym": "Fs", "value": Fs, "unit": "",
+                "display": f"FS = {display_round(Fs, 3)}"},
+        narration="Cohesion and friction are mobilized by the same "
+                  "factor at this point, the definition of the factor "
+                  "of safety in Culmann's method.",
+        viz=[{"op": "highlight", "target": "wedge"}])
+
+    return {
+        "results": [],
+        "conclusions": [
+            {"quantity": "FS", "value": display_round(Fs, 3), "unit": "",
+             "governing": "Culmann plane through the toe"},
+            {"quantity": "theta_cr", "value": display_round(theta_cr, 2),
+             "unit": "degrees", "governing": "critical plane"}],
+        "comparison": None,
+        "figure": {"template": "culmann", "H": H, "beta": beta,
+                   "theta": display_round(theta_cr, 1), "gamma": gamma,
+                   "phi": phi, "c": c, "Fs": display_round(Fs, 3)},
     }
 
 

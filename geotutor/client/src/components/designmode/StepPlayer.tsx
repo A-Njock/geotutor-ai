@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, BookOpen, Calculator, Lightbulb, Flag } from
 import { DesignSolution, DesignStep, FigureParams } from "./types";
 import { FootingFigure } from "./FootingFigure";
 import { PhaseFigure } from "./PhaseFigure";
-import { SlopeFigure } from "./SlopeFigure";
+import { SlopeFigure, CulmannFigure } from "./SlopeFigure";
 import { BracedCutFigure } from "./BracedCutFigure";
 import { PileFigure } from "./PileFigure";
 import { SheetPileFigure, CantileverWallFigure, WallThrustFigure } from "./WallFigure";
@@ -22,6 +22,8 @@ function DesignFigure({ figure, steps, current }: {
       return <PhaseFigure params={figure} steps={steps} current={current} />;
     case "infinite_slope":
       return <SlopeFigure params={figure} steps={steps} current={current} />;
+    case "culmann":
+      return <CulmannFigure params={figure} steps={steps} current={current} />;
     case "braced_cut":
       return <BracedCutFigure params={figure} steps={steps} current={current} />;
     case "pile":

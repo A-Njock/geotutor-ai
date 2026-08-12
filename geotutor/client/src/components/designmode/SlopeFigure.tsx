@@ -150,3 +150,90 @@ export function SlopeFigure({
     </svg>
   );
 }
+
+// Culmann wedge: finite slope of height H at angle beta, plane failure
+// surface through the toe at theta, the sliding wedge between them.
+export function CulmannFigure({
+  params, steps, current,
+}: {
+  params: FigureParams;
+  steps: DesignStep[];
+  current: number;
+}) {
+  const hl = activeTargets(steps, current);
+  const Hm = (params.H as number) || 8;
+  const beta = ((params.beta as number) || 60) * Math.PI / 180;
+  const theta = ((params.theta as number) || 40) * Math.PI / 180;
+
+  const toe = { x: 170, y: 360 };
+  const hPx = 240;
+  const crest = { x: toe.x + hPx / Math.tan(beta), y: toe.y - hPx };
+  // the failure plane through the toe exits the crest surface at:
+  const planeX = toe.x + hPx / Math.tan(theta);
+  const exitP = { x: planeX, y: toe.y - hPx };
+  const halo = { stroke: "#ffffff", strokeWidth: 3.5, paintOrder: "stroke" as const };
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" role="img"
+      aria-label="Culmann plane failure wedge">
+      <defs>
+        <pattern id="soilHatchCul" width="10" height="10" patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="10" stroke={FIG.SOIL_HATCH} strokeWidth="0.7" opacity="0.4" />
+        </pattern>
+      </defs>
+
+      {/* the slope body */}
+      <polygon
+        points={`60,${toe.y} ${toe.x},${toe.y} ${crest.x},${crest.y} ${W - 40},${crest.y} ${W - 40},${toe.y + 60} 60,${toe.y + 60}`}
+        fill={FIG.SOIL_FILL} stroke="none" />
+      <polygon
+        points={`60,${toe.y} ${toe.x},${toe.y} ${crest.x},${crest.y} ${W - 40},${crest.y} ${W - 40},${toe.y + 60} 60,${toe.y + 60}`}
+        fill="url(#soilHatchCul)" />
+      {/* ground lines */}
+      <line x1={60} y1={toe.y} x2={toe.x} y2={toe.y} stroke={FIG.INK} strokeWidth="2.2" />
+      <line x1={toe.x} y1={toe.y} x2={crest.x} y2={crest.y} stroke={FIG.INK} strokeWidth="2.2" />
+      <line x1={crest.x} y1={crest.y} x2={W - 40} y2={crest.y} stroke={FIG.INK} strokeWidth="2.2" />
+
+      {/* sliding wedge between face and failure plane */}
+      <polygon
+        points={`${toe.x},${toe.y} ${crest.x},${crest.y} ${exitP.x},${exitP.y}`}
+        fill={FIG.SLIP} fillOpacity={hl.has("wedge") ? 0.28 : 0.14}
+        stroke="none" />
+
+      {/* failure plane through the toe */}
+      <line x1={toe.x} y1={toe.y} x2={exitP.x} y2={exitP.y}
+        stroke={FIG.SLIP} strokeWidth={hl.has("plane") ? 4 : 2.6}
+        strokeDasharray="9 6" />
+      <text x={exitP.x + 8} y={exitP.y + 20} fontSize="15" fill={FIG.SLIP}
+        fontFamily="system-ui" {...halo}>{`θcr = ${params.theta}°`}</text>
+
+      {/* slide direction arrow on the wedge */}
+      <g opacity={hl.has("wedge") ? 1 : 0.7}>
+        <line
+          x1={(toe.x + exitP.x) / 2 + 26} y1={(toe.y + exitP.y) / 2 - 26}
+          x2={(toe.x + exitP.x) / 2 - 10} y2={(toe.y + exitP.y) / 2 + 10}
+          stroke={FIG.AMBER} strokeWidth="3" />
+        <path
+          d={`M ${(toe.x + exitP.x) / 2 - 10} ${(toe.y + exitP.y) / 2 + 10} l 12 -2 l -6 -10 z`}
+          fill={FIG.AMBER} />
+      </g>
+
+      {/* dimensions */}
+      <g stroke={FIG.DIM} strokeWidth="1.1">
+        <line x1={toe.x - 36} y1={toe.y} x2={toe.x - 36} y2={crest.y} />
+      </g>
+      <text x={toe.x - 46} y={(toe.y + crest.y) / 2} fontSize="15.5" fill={FIG.DIM}
+        textAnchor="end" fontFamily="system-ui" {...halo}>{`H = ${Hm} m`}</text>
+      <path d={`M ${toe.x + 46} ${toe.y} A 46 46 0 0 0 ${toe.x + 46 * Math.cos(beta)} ${toe.y - 46 * Math.sin(beta)}`}
+        fill="none" stroke={FIG.DIM} strokeWidth="1.4" />
+      <text x={toe.x + 54} y={toe.y - 12} fontSize="15" fill={FIG.DIM}
+        fontFamily="system-ui" {...halo}>{`β = ${params.beta}°`}</text>
+
+      <text x={70} y={H - 22} fontSize="15.5" fill={FIG.SOIL_HATCH}
+        fontFamily="system-ui" {...halo}>
+        {`γ = ${params.gamma} kN/m³   φ = ${params.phi}°   c = ${params.c} kPa   FS = ${params.Fs}`}
+      </text>
+    </svg>
+  );
+}
