@@ -21,6 +21,14 @@ CANONICAL = {
     "angle": "degree",
     "volume": "m^3",
     "consolidation_coeff": "m^2/year",
+    "mass": "kg",
+    "density": "Mg/m^3",
+    "time": "s",
+    "flow": "m^3/s",
+    "velocity": "m/s",
+    "compressibility": "m^2/kN",
+    "moment": "kN*m",
+    "grain_size": "mm",
     "dimensionless": "",
 }
 
@@ -61,6 +69,33 @@ SYMBOL_FAMILY = {
     "e_void": "dimensionless", "S_r": "dimensionless",
     "Nc": "dimensionless", "U": "dimensionless",
     "cv": "consolidation_coeff",
+    # lab measurements
+    "m_tin": "mass", "m_wet_tot": "mass", "m_dry_tot": "mass",
+    "m_wet": "mass", "m_dry": "mass", "m_wax": "mass",
+    "D_s": "length", "L_s": "length",
+    "rho_bulk": "density", "rho_dry": "density", "rho_wax": "density",
+    "e_max": "dimensionless", "e_min": "dimensionless",
+    # permeability and seepage
+    "d_pipe": "length", "h1": "length", "h2": "length",
+    "h_const": "length", "H_head": "length",
+    "t_el": "time", "Q_vol": "volume", "q_flow": "flow",
+    "r1": "length", "r2": "length", "hw1": "length", "hw2": "length",
+    "Nf": "dimensionless", "Nd": "dimensionless", "k_perm": "velocity",
+    # consolidation magnitude and scaling
+    "Cc": "dimensionless", "Cr": "dimensionless", "OCR": "dimensionless",
+    "sigma_v0": "stress", "d_sigma": "stress", "mv": "compressibility",
+    "t_lab": "time", "H_lab": "length",
+    # classification
+    "P200": "dimensionless", "P4": "dimensionless",
+    "D10": "grain_size", "D30": "grain_size", "D60": "grain_size",
+    "Cu": "dimensionless", "Cz": "dimensionless",
+    "LL": "dimensionless", "PL": "dimensionless", "PI": "dimensionless",
+    # capacity fidelity
+    "su2": "stress", "cw": "stress", "M_mom": "moment",
+    "Ir": "dimensionless", "Nq": "dimensionless",
+    "Ngamma": "dimensionless", "K": "dimensionless",
+    "n_slices": "dimensionless", "S_limit": "length",
+    "theta_wall": "angle",
 }
 
 # unit spellings that pint does not accept out of the box
@@ -73,6 +108,24 @@ _UNIT_ALIASES = {
     "m2/s": "m^2/s", "m2/sec": "m^2/s", "cm2/s": "cm^2/s",
     "cm2/sec": "cm^2/s", "mm2/s": "mm^2/s", "m2/day": "m^2/day",
     "cm2/year": "cm^2/year", "cm2/yr": "cm^2/year",
+    # densities (case is lost upstream: "mg/m3" always means megagram here)
+    "mg/m3": "Mg/m^3", "mg/m^3": "Mg/m^3", "mg/m³": "Mg/m^3",
+    "g/cm3": "g/cm^3", "g/cm^3": "g/cm^3", "g/cc": "g/cm^3",
+    "kg/m3": "kg/m^3", "kg/m^3": "kg/m^3",
+    "g": "gram", "gm": "gram", "grams": "gram", "kg": "kilogram",
+    # time and flow
+    "min": "minute", "mins": "minute", "minutes": "minute",
+    "hr": "hour", "hrs": "hour", "h": "hour", "hours": "hour",
+    "day": "day", "days": "day", "week": "week", "weeks": "week",
+    "l": "liter", "litre": "liter", "litres": "liter", "ml": "milliliter",
+    "l/s": "liter/second", "l/min": "liter/minute",
+    "m3/s": "m^3/s", "m3/day": "m^3/day", "m3/min": "m^3/minute",
+    "m/s": "m/s", "m/sec": "m/s", "cm/s": "cm/s", "cm/sec": "cm/s",
+    "mm/s": "mm/s", "m/day": "m/day", "m/min": "m/minute",
+    # compressibility and moment
+    "m2/kn": "m^2/kN", "m^2/kn": "m^2/kN", "1/kpa": "1/kPa",
+    "kn*m": "kN*m", "kn-m": "kN*m", "knm": "kN*m", "kn m": "kN*m",
+    "kn.m": "kN*m", "kn-m/m": "kN*m",
     "": "dimensionless", None: "dimensionless",
 }
 

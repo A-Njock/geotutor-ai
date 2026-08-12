@@ -33,8 +33,18 @@ def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
     if _SEARCH_RE.search(problem_text) and givens.get("xc") is None:
         return _critical_search(frame, givens, add, problem_text)
     if _CIRCULAR_RE.search(problem_text) and not _INFINITE_RE.search(problem_text):
+        if givens.get("xc") is None and givens.get("H") is not None \
+                and givens.get("beta") is not None:
+            # circular reading but no trial circle given: search for the
+            # critical one instead of refusing
+            return _critical_search(frame, givens, add, problem_text)
         return _swedish_slices(frame, givens, add, problem_text)
     if not _INFINITE_RE.search(problem_text):
+        if givens.get("H") is not None and givens.get("beta") is not None \
+                and givens.get("gamma") is not None:
+            # a finite slope with strength but no surface specified: the
+            # honest default is the search for the critical circle
+            return _critical_search(frame, givens, add, problem_text)
         return {"error": "This slope needs either the translational "
                          "(infinite slope) reading or a trial circle with "
                          "its centre coordinates for the method of slices."}
@@ -812,8 +822,22 @@ def _swedish_slices(frame, givens, add, problem_text):
     water = {"type": "ru", "value": float(ru)} if ru else None
     profile = K.simple_slope_profile(H, beta, c=c, phi=phi, gamma=gamma,
                                      water=water)
+    n_sl = givens.get("n_slices")
     try:
-        slices, (x_entry, x_exit) = K.make_slices(profile, circle, width=b_w)
+        if n_sl:
+            slices, (x_entry, x_exit) = K.make_slices(
+                profile, circle, n_slices=int(n_sl))
+            add("assume", "Slice count as the problem prescribes", "setup",
+                tex=f"n = {int(n_sl)}\\ \\text{{slices}}",
+                narration="The problem divides the mass into a stated "
+                          "number of slices, so the same discretization "
+                          "is used here; a hand solution with few slices "
+                          "is coarser than a fine one, and matching it "
+                          "faithfully matters more than extra precision.",
+                augmented=True)
+        else:
+            slices, (x_entry, x_exit) = K.make_slices(profile, circle,
+                                                      width=b_w)
     except ValueError as e:
         return {"error": f"This trial circle cannot be sliced: {e}."}
 

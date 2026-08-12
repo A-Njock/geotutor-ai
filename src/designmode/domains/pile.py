@@ -181,11 +181,21 @@ def _clay_alpha(frame, givens, add, problem_text):
             tex="N_c^* = 9", augmented=True,
             narration="Meyerhof's value for a deep foundation in clay; "
                       "used whenever the problem does not state one.")
-    Qp = Nc * su * Ap
+    # the tip may sit in stronger clay than the shaft average
+    su_tip = givens.get("su2", su)
+    if su_tip != su:
+        add("assume", "Two strengths: tip and shaft average", "setup",
+            tex=(f"s_{{u,tip}} = {su_tip:g}\\ \\text{{kPa}};\\quad "
+                 f"\\bar s_u = {su:g}\\ \\text{{kPa}}"),
+            narration="The point resistance feels the clay AT the tip, "
+                      "while the shaft mobilizes the average strength "
+                      "over its whole length; the two must not be mixed.",
+            augmented=True)
+    Qp = Nc * su_tip * Ap
     add("compute", "Point capacity from the undrained strength",
         "method:point",
-        tex="Q_p = N_c^*\\,s_u\\,A_p",
-        sub=f"Q_p = ({Nc:g})({su:g})({Ap:.4g})",
+        tex="Q_p = N_c^*\\,s_{u,tip}\\,A_p",
+        sub=f"Q_p = ({Nc:g})({su_tip:g})({Ap:.4g})",
         result={"sym": "Qp", "value": Qp, "unit": "kN",
                 "display": f"Qp = {display_round(Qp)} kN"},
         provenance=[{"symbol": "Nc*", "value": Nc,
@@ -426,13 +436,62 @@ def _point(frame, givens, add, problem_text=""):
             {"method": r["method"], "q_ult": display_round(r["q_ult"])}
             for r in results]}])
 
+    Qp_gov = min(r["q_ult"] for r in results)
+    conclusions = [{"quantity": "Q_p", "value": display_round(Qp_gov),
+                    "unit": "kN", "governing": "most conservative"}]
+
+    # the problem gives the shaft coefficient K and asks the whole
+    # capacity: add the shaft term and conclude the total as well
+    wants_total = re.search(r"total|ultimate (load )?capacity|"
+                            r"characteristic (resistance|capacity)|"
+                            r"pile capacity", problem_text or "",
+                            re.IGNORECASE)
+    K_giv = givens.get("K")
+    if K_giv is not None and wants_total:
+        _Ap2, p, _sh = _section(D, problem_text or "")
+        delta = givens.get("delta")
+        if delta is None:
+            delta = 0.8 * phi1
+            add("assume", "Wall friction angle on the shaft", "setup",
+                tex="\\delta' = 0.8\\,\\phi'", augmented=True)
+        sig_avg = gamma1 * L / 2.0
+        Qs = K_giv * sig_avg * math.tan(math.radians(delta)) * p * L
+        add("compute", "Shaft resistance with the given K", "results",
+            tex="Q_s = K\\,\\overline{\\sigma}'_v \\tan\\delta'\\,p\\,L",
+            sub=(f"Q_s = ({K_giv:g})({display_round(sig_avg):g})"
+                 f"\\tan({delta:g}^\\circ)({p:.3g})({L:g})"),
+            result={"sym": "Qs", "value": Qs, "unit": "kN",
+                    "display": f"Qs = {display_round(Qs):g} kN"},
+            viz=[{"op": "highlight", "target": "shaft_arrows"}])
+        Qu = Qp_gov + Qs
+        add("compute", "Total capacity, point plus shaft", "results",
+            tex="Q_u = Q_p + Q_s",
+            sub=(f"Q_u = {display_round(Qp_gov):g} + "
+                 f"{display_round(Qs):g}"),
+            result={"sym": "Qu", "value": Qu, "unit": "kN",
+                    "display": f"Qu = {display_round(Qu):g} kN"},
+            viz=[{"op": "highlight", "target": "tip"}])
+        conclusions.append({"quantity": "Q_u", "value": display_round(Qu),
+                            "unit": "kN",
+                            "governing": "point (most conservative) "
+                                         "plus shaft"})
+        FSv = givens.get("FS")
+        if FSv:
+            Qall = Qu / FSv
+            add("compute", "Allowable capacity", "results",
+                tex="Q_{all} = Q_u / FS",
+                sub=f"Q_{{all}} = {display_round(Qu):g} / {FSv:g}",
+                result={"sym": "Q_all", "value": Qall, "unit": "kN",
+                        "display": f"Q_all = {display_round(Qall):g} kN"},
+                viz=[{"op": "highlight", "target": "load"}])
+            conclusions.append({"quantity": "Q_all",
+                                "value": display_round(Qall), "unit": "kN",
+                                "governing": f"FS = {FSv:g}", "FS": FSv})
+
     return {
         "results": [{"method": r["method"], "label": r["label"],
                      "q_ult": display_round(r["q_ult"])} for r in results],
-        "conclusions": [{"quantity": "Q_p",
-                         "value": display_round(min(r["q_ult"]
-                                                    for r in results)),
-                         "unit": "kN", "governing": "most conservative"}],
+        "conclusions": conclusions,
         "comparison": None,
         "figure": _fig(frame, givens, L, D, "point"),
     }
@@ -617,6 +676,7 @@ def _fig(frame, givens, L, D, mode):
     return {
         "template": "pile",
         "L": L, "D": D, "mode": mode,
+        "soil_type": frame.get("soil_type") or "soil",
         "gamma": givens.get("gamma"), "phi": givens.get("phi"),
         "phi2": givens.get("phi2"),
         "Lc": 15.0 * D if mode == "side" else None,

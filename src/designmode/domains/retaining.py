@@ -175,6 +175,72 @@ def _sheet_pile(frame, givens, add):
 
 
 # ---------------------------------------------------------------------------
+# Coulomb wedge: wall friction delta, battered back, sloping backfill
+# ---------------------------------------------------------------------------
+
+def _coulomb_thrust(add, H, gamma, phi, delta, theta_wall, alpha, q):
+    face = 90.0 - theta_wall  # wall face angle from horizontal
+    Ka = F.coulomb_Ka(phi, delta, alpha, face)
+    add("lookup", "Coulomb's active coefficient for the real wall", "setup",
+        tex=f"K_a = {Ka:.4f}",
+        provenance=[{"symbol": "Ka", "value": round(Ka, 4),
+                     "means": "active coefficient from the sliding wedge "
+                              "between the wall back and the trial plane",
+                     "source": "Coulomb (1776) wedge theory, the standard "
+                               "closed form",
+                     "arguments": [f"φ = {phi:g}°", f"δ = {delta:g}°",
+                                   f"backfill slope α = {alpha:g}°",
+                                   f"wall back {theta_wall:g}° from "
+                                   "vertical"],
+                     "whyApplies": "wall friction and a battered back "
+                                   "are outside Rankine's assumptions; "
+                                   "Coulomb's wedge handles both"}],
+        viz=[{"op": "highlight", "target": "wall"}])
+    P = 0.5 * gamma * H * H * Ka + q * H * Ka
+    add("compute", "Active thrust on the wall", "results",
+        tex="P_a = \\tfrac{1}{2}\\gamma H^2 K_a" + (" + qHK_a" if q else ""),
+        sub=(f"P_a = \\tfrac{{1}}{{2}}({gamma:g})({H:g})^2({Ka:.4f})"
+             + (f" + ({q:g})({H:g})({Ka:.4f})" if q else "")),
+        result={"sym": "P_a", "value": P, "unit": "kN/m",
+                "display": f"Pa = {display_round(P)} kN/m"},
+        narration="The thrust acts at the wall friction angle delta from "
+                  "the normal to the wall back, not horizontally.",
+        viz=[{"op": "highlight", "target": "resultant"}])
+    # inclination of P to the horizontal: delta measured from the normal
+    # to the wall back, the back itself tilted theta_wall from vertical
+    incl = math.radians(delta + theta_wall)
+    Ph = P * math.cos(incl)
+    Pv = P * math.sin(incl)
+    add("compute", "Horizontal and vertical components", "results",
+        tex="P_h = P_a\\cos(\\delta+\\theta);\\quad "
+            "P_v = P_a\\sin(\\delta+\\theta)",
+        sub=(f"P_h = {display_round(Ph)};\\quad "
+             f"P_v = {display_round(Pv)}"),
+        result={"sym": "P_h", "value": Ph, "unit": "kN/m",
+                "display": f"Ph = {display_round(Ph)} kN/m"},
+        viz=[{"op": "highlight", "target": "resultant"}])
+    return {
+        "results": [],
+        "conclusions": [
+            {"quantity": "P_a", "value": display_round(P), "unit": "kN/m",
+             "governing": "Coulomb wedge"},
+            {"quantity": "P_ah", "value": display_round(Ph),
+             "unit": "kN/m", "governing": "horizontal component"},
+            {"quantity": "P_av", "value": display_round(Pv),
+             "unit": "kN/m", "governing": "vertical component"},
+            {"quantity": "z_bar", "value": display_round(H / 3.0, 3),
+             "unit": "m", "governing": "above the base"}],
+        "comparison": None,
+        "figure": {"template": "lateral_wall", "H": H, "Dw": None,
+                   "gamma": gamma, "phi": phi, "c": 0, "alpha": alpha,
+                   "q": q, "passive": False,
+                   "sigma_base": display_round(gamma * H * Ka),
+                   "zc": None, "P": display_round(P),
+                   "zbar": display_round(H / 3.0, 3)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # lateral thrust on a wall from height and soil alone (Rankine)
 # ---------------------------------------------------------------------------
 
@@ -186,6 +252,9 @@ def _lateral_thrust(frame, givens, add, problem_text):
     alpha = givens.get("alpha", givens.get("beta", 0.0)) or 0.0
     q = givens.get("q_applied", 0.0) or 0.0
     Dw = givens.get("Dw")
+    cw = givens.get("cw")
+    delta = givens.get("delta")
+    theta_wall = givens.get("theta_wall", 0.0) or 0.0
     passive = bool(_PASSIVE_RE.search(problem_text))
     side = "passive" if passive else "active"
 
@@ -197,6 +266,11 @@ def _lateral_thrust(frame, givens, add, problem_text):
         phi = 0.0
     if c is None:
         c = 0.0
+
+    # wall friction or a battered back: Coulomb's wedge, not Rankine
+    if (delta or theta_wall) and c == 0.0 and not passive:
+        return _coulomb_thrust(add, H, gamma, phi, delta or 0.0,
+                               theta_wall, alpha, q)
     if c > 0 and alpha:
         return {"error": "A cohesive backfill with a sloping surface is "
                          "beyond the Rankine expressions used here; state "
@@ -292,11 +366,35 @@ def _lateral_thrust(frame, givens, add, problem_text):
         fig_sigma = display_round(s_base + u)
     elif c > 0:
         sign = 1.0 if passive else -1.0
-        s_top = q * K + sign * 2.0 * c * sq
-        s_base = (q + gamma * H) * K + sign * 2.0 * c * sq
+        # wall adhesion deepens the cohesion term: 2 sqrt(K) grows into
+        # Kc = 2 sqrt(K (1 + cw/c)) (the standard adhesion correction)
+        if cw:
+            Kc = 2.0 * math.sqrt(K * (1.0 + cw / c))
+            add("lookup", "Cohesion coefficient with wall adhesion",
+                "setup",
+                tex=("K_{c} = 2\\sqrt{K\\,(1 + c_w/c)}"
+                     f" = 2\\sqrt{{{K:.3f}(1 + {cw:g}/{c:g})}}"
+                     f" = {Kc:.3f}"),
+                provenance=[{"symbol": "Kc", "value": round(Kc, 3),
+                             "means": "cohesion multiplier accounting for "
+                                      "the adhesion the soil develops on "
+                                      "the wall itself",
+                             "source": "the standard earth pressure "
+                                       "correction, 2 sqrt(K(1+cw/c))",
+                             "arguments": [f"c = {c:g} kPa",
+                                           f"cw = {cw:g} kPa"],
+                             "whyApplies": "the wall face carries shear "
+                                           "too, which relieves the "
+                                           "active push and adds to the "
+                                           "passive resistance"}],
+                viz=[{"op": "highlight", "target": "wall"}])
+        else:
+            Kc = 2.0 * sq
+        s_top = q * K + sign * Kc * c
+        s_base = (q + gamma * H) * K + sign * Kc * c
         add("compute", f"Pressure ordinates with cohesion ({side})", "setup",
-            tex=("\\sigma_h = (q + \\gamma z)K + 2c\\sqrt{K}" if passive
-                 else "\\sigma_h = (q + \\gamma z)K - 2c\\sqrt{K}"),
+            tex=("\\sigma_h = (q + \\gamma z)K + K_c\\,c" if passive
+                 else "\\sigma_h = (q + \\gamma z)K - K_c\\,c"),
             sub=(f"\\sigma_{{top}} = {display_round(s_top)};\\quad "
                  f"\\sigma_{{base}} = {display_round(s_base)}"),
             result={"sym": "sigma_base", "value": s_base, "unit": "kPa",
@@ -326,7 +424,7 @@ def _lateral_thrust(frame, givens, add, problem_text):
             # thrust ignoring the tension zone entirely (after cracks open)
             P_crack = 0.5 * s_base * (H - zc) if s_base > 0 else 0.0
             add("compute", "Depth of the tension crack", "setup",
-                tex="z_c = \\tfrac{2c}{\\gamma\\sqrt{K_a}} - \\tfrac{q}"
+                tex="z_c = \\tfrac{K_c\\,c}{\\gamma K} - \\tfrac{q}"
                     "{\\gamma}",
                 sub=f"z_c = {display_round(zc, 3)}\\ \\text{{m}}",
                 result={"sym": "zc", "value": zc, "unit": "m",
@@ -394,6 +492,27 @@ def _lateral_thrust(frame, givens, add, problem_text):
              "governing": f"Rankine {side}"},
             {"quantity": "z_bar", "value": display_round(zbar, 3),
              "unit": "m", "governing": "above the base"}]
+        if alpha:
+            a_r = math.radians(alpha)
+            Ph = P * math.cos(a_r)
+            Pv = P * math.sin(a_r)
+            add("compute", "Components of the inclined resultant",
+                "results",
+                tex="P_h = P\\cos\\alpha;\\quad P_v = P\\sin\\alpha",
+                sub=(f"P_h = {display_round(Ph)};\\quad "
+                     f"P_v = {display_round(Pv)}"),
+                result={"sym": "P_h", "value": Ph, "unit": "kN/m",
+                        "display": f"Ph = {display_round(Ph)} kN/m"},
+                narration="With a sloping backfill Rankine's resultant "
+                          "acts parallel to the ground surface, so it "
+                          "carries both a horizontal push and a vertical "
+                          "drag on the wall.",
+                viz=[{"op": "highlight", "target": "resultant"}])
+            conclusions += [
+                {"quantity": "P_ah", "value": display_round(Ph),
+                 "unit": "kN/m", "governing": "horizontal component"},
+                {"quantity": "P_av", "value": display_round(Pv),
+                 "unit": "kN/m", "governing": "vertical component"}]
         fig_sigma = display_round(s_base)
 
     return {
@@ -404,9 +523,8 @@ def _lateral_thrust(frame, givens, add, problem_text):
                    else None, "gamma": gamma, "phi": phi, "c": c,
                    "alpha": alpha, "q": q, "passive": passive,
                    "sigma_base": fig_sigma,
-                   "zc": display_round(max(0.0, 2.0 * c / (gamma * sq)
-                                           - q / gamma), 3)
-                         if (c > 0 and not passive) else None,
+                   "zc": display_round(zc, 3)
+                         if (c > 0 and not passive and not water) else None,
                    "P": display_round(P),
                    "zbar": display_round(zbar, 3)},
     }

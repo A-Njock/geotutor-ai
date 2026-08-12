@@ -20,6 +20,19 @@ ALLOWED_SYMBOLS = [
     "x1", "x2", "x3", "x4", "x5", "alpha", "gamma_c", "gamma2", "phi2",
     "c2", "xc", "yc", "R", "ru", "sigma_c", "sigma_phi", "sigma_gamma",
     "e_void", "S_r", "Nc", "cv", "U",
+    # lab measurements (masses include the container when *_tot)
+    "m_tin", "m_wet_tot", "m_dry_tot", "m_wet", "m_dry", "D_s", "L_s",
+    "rho_bulk", "rho_dry", "m_wax", "rho_wax",
+    # permeability and seepage
+    "d_pipe", "h1", "h2", "t_el", "Q_vol", "h_const", "q_flow",
+    "r1", "r2", "hw1", "hw2", "Nf", "Nd", "k_perm", "H_head",
+    # consolidation (magnitude and scaling)
+    "Cc", "Cr", "sigma_v0", "d_sigma", "mv", "t_lab", "H_lab", "OCR",
+    # classification
+    "P200", "P4", "D10", "D30", "D60", "Cu", "Cz", "LL", "PL", "PI",
+    # capacity fidelity
+    "su2", "cw", "M_mom", "Ir", "Nq", "Ngamma", "K", "n_slices",
+    "e_max", "e_min", "S_limit", "theta_wall",
 ]
 
 FRAME_SYSTEM = """You are the problem analyst of GeoTutor, a geotechnical
@@ -75,9 +88,44 @@ Rules:
   ratio, S_r = degree of saturation (unit "%%" when given as percent).
   e_load stays reserved for load eccentricity.
 - Consolidation: cv = coefficient of consolidation (copy with its printed
-  unit, e.g. "m^2/year"), H = clay layer thickness, U = average degree of
-  consolidation (unit "%%" when given as percent); record whether the layer
-  drains from one face or both in assumptions_made.
+  unit, e.g. "m^2/year" or "1e-7 m^2/s"; scientific notation like
+  10^{-7} must be copied as 1e-7), H = clay layer thickness, U = average
+  degree of consolidation (unit "%%" when given as percent); record
+  whether the layer drains from one face or both in assumptions_made.
+  Settlement data: Cc = compression index, Cr = recompression index,
+  e_void = initial void ratio, sigma_v0 = initial vertical effective
+  stress, d_sigma = stress increase, mv = coefficient of volume
+  compressibility (copy with unit, e.g. "m^2/kN"), OCR = overconsolidation
+  ratio. Lab-to-field: t_lab = laboratory time, H_lab = laboratory sample
+  thickness (drainage conditions of BOTH in assumptions_made).
+- Lab measurements: m_tin = container/tin mass, m_wet_tot = container plus
+  wet soil, m_dry_tot = container plus dry soil, m_wet/m_dry = soil mass
+  alone (wet/dry), D_s and L_s = specimen diameter and length,
+  rho_bulk/rho_dry = bulk/dry density (copy with unit, Mg/m^3 or kg/m^3),
+  m_wax = wax coating mass, rho_wax = wax density, e_max/e_min = maximum
+  and minimum void ratios of a sand.
+- Permeability: d_pipe = standpipe diameter, h1/h2 = initial/final head,
+  t_el = elapsed time (copy with its unit), Q_vol = collected water
+  volume, h_const = constant head, q_flow = pumping/discharge rate,
+  r1/r2 = radial distances of observation wells, hw1/hw2 = water heights
+  in those wells, Nf/Nd = numbers of flow channels and potential drops,
+  k_perm = permeability when GIVEN, H_head = total head difference.
+- Classification: P200 = %% passing the 0.075 mm (No. 200) sieve, P4 = %%
+  passing the 4.75 mm (No. 4) sieve (if %% RETAINED is stated, convert:
+  passing = 100 - retained, and record that in assumptions_made),
+  D10/D30/D60 = grain sizes in mm, Cu = uniformity coefficient,
+  Cz = coefficient of curvature (often printed Cc; use Cz so it cannot
+  collide with the compression index), LL/PL/PI = Atterberg limits in %%.
+  Qualitative fines behaviour (dilatancy, dry strength, toughness) is
+  text: record it in assumptions_made verbatim.
+- Capacity fidelity: su2 = undrained strength of a SECOND layer or at the
+  pile tip when it differs from the shaft average su, cw = wall adhesion,
+  M_mom = applied moment (kN*m), Ir = rigidity index when stated,
+  Nc/Nq/Ngamma = bearing capacity factors when the problem STATES them,
+  K = lateral earth pressure coefficient when stated, n_slices = the
+  number of slices a slope problem prescribes, S_limit = allowable
+  settlement (copy with unit, often mm), theta_wall = inclination of the
+  wall back from the VERTICAL (0 = vertical back).
 - Cantilever sheet pile: L1 = depth above the water table, L2 = water table
   to dredge line.
 - Cantilever retaining wall (Das notation): H = stem height, x1 = stem top
@@ -207,6 +255,13 @@ def validate_frame(frame: dict, problem_text: str) -> tuple[list[str], list[str]
         repairs.append("eccentric loading detected: flagged as unsupported "
                        "rather than solved incorrectly")
 
+    # a moment with a vertical load IS an eccentric load: e = M / V
+    if f.get("domain") == "shallow_foundation" and \
+            {"M_mom", "P"} <= syms and not f.get("eccentric_load"):
+        f["eccentric_load"] = True
+        repairs.append("moment and vertical load given: treated as an "
+                       "eccentric load with e = M/V")
+
     # both B and L present but shape not rectangular-family
     if {"B", "L"} <= syms and f.get("footing_shape") in ("unknown", None):
         f["footing_shape"] = "rectangular"
@@ -291,6 +346,9 @@ def bind_givens(frame: dict) -> tuple[dict, list[str]]:
     wt = frame.get("water_table") or {}
     if wt.get("present") and wt.get("depth_m") is not None and "Dw" not in bound:
         bound["Dw"] = float(wt["depth_m"])
+    # a stated moment plus the vertical load fixes the eccentricity
+    if "e_load" not in bound and bound.get("M_mom") and bound.get("P"):
+        bound["e_load"] = bound["M_mom"] / bound["P"]
     return bound, problems
 
 

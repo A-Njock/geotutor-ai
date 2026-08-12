@@ -117,12 +117,12 @@ export function PileFigure({
       {/* layer labels */}
       <text x={64} y={GY + 26} fontSize="16" fill={FIG.SOIL_HATCH}
         fontFamily="system-ui" {...halo}>
-        {`${two ? "loose sand" : "sand"}${params.phi ? `  φ' = ${params.phi}°` : ""}${params.gamma ? `  γ = ${params.gamma} kN/m³` : ""}`}
+        {`${(params.soil_type as string) || "soil"}${params.phi ? `  φ' = ${params.phi}°` : ""}${params.gamma ? `  γ = ${params.gamma} kN/m³` : ""}`}
       </text>
       {two && (
         <text x={64} y={layerY + 26} fontSize="16" fill={FIG.SOIL_HATCH}
           fontFamily="system-ui" {...halo}>
-          {`dense sand  φ' = ${params.phi2}°`}
+          {`bearing layer  φ' = ${params.phi2}°`}
         </text>
       )}
     </svg>

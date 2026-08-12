@@ -116,6 +116,11 @@ def _filter_requested_method(frame: dict, methods: list[dict],
                     and m["method"].lower() in text]
             if keep:
                 return keep
+    # deterministic fallback: the name in the problem text alone is enough
+    # ("using Hansen's equations"), so a framing slip cannot widen the run
+    named = [m for m in methods if m["method"].lower() in text]
+    if named and len(named) < len(methods):
+        return named
     return methods
 
 
@@ -452,10 +457,18 @@ def _factor_steps(m: dict, frame: dict, mb: dict, add, scene: str):
     phi = mb.get("phi", 0.0)
     B, L, Df = mb.get("B", 0.0), mb.get("L", 0.0), mb.get("Df", 0.0)
 
-    # bearing capacity factors
+    # bearing capacity factors; a factor the problem STATES overrides the
+    # computed one (the author's value is part of the problem statement)
+    given_factor = {"N_c": mb.get("Nc"), "N_q": mb.get("Nq"),
+                    "N_gamma": mb.get("Ngamma")}
     parts, lines = [], []
     for spec in m.get("factors", []):
-        if spec["fn"] == "skempton_Nc":
+        gv = given_factor.get(spec["symbol"])
+        if gv is not None:
+            val = float(gv)
+            spec = dict(spec, source="stated in the problem",
+                        means=spec["means"] + " (value given by the author)")
+        elif spec["fn"] == "skempton_Nc":
             val = F.skempton_Nc(B, L, Df, shape)
         else:
             val = F.FACTOR_FUNCTIONS[spec["fn"]](phi)
@@ -553,6 +566,32 @@ def _conclusions(frame, givens, shape, results, add):
     governing = min(results, key=lambda r: r["q_ult"])
     multi = len(results) > 1
     tag = f" (governing: {governing['method']})" if multi else ""
+
+    # the problem gives the applied load and asks for the factor of safety
+    text = str(frame.get("_problem_text", "")).lower()
+    q_app = givens.get("q_applied")
+    if q_app is None and givens.get("P"):
+        B, L = givens.get("B", 0.0), givens.get("L", 0.0)
+        area, _ = _plan_area(shape, B, L)
+        if area > 0:
+            q_app = givens["P"] / area
+    if q_app and ("factor of safety" in text or "fs" in
+                  [w.strip(".,;:") for w in text.split()]) \
+            and "FS" not in givens:
+        FS_bc = governing["q_ult"] / q_app
+        add("compute", "Factor of safety against bearing failure",
+            "results",
+            tex="FS = \\tfrac{q_u}{q_{applied}}",
+            sub=(f"FS = \\tfrac{{{display_round(governing['q_ult']):g}}}"
+                 f"{{{display_round(q_app):g}}}"),
+            result={"sym": "FS", "value": FS_bc, "unit": "",
+                    "display": f"FS = {display_round(FS_bc, 3)}"},
+            narration="The applied pressure is given, so the factor of "
+                      "safety is how many times over the soil could carry "
+                      f"it before failing{tag}.",
+            viz=[{"op": "highlight", "target": "pressure"}])
+        out.append({"quantity": "FS", "value": display_round(FS_bc, 3),
+                    "unit": "", "governing": governing["method"]})
 
     if any(q in ("q_all", "Q_all") for q in wanted):
         FS = givens.get("FS", 3.0)
