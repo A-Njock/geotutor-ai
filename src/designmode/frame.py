@@ -33,6 +33,8 @@ ALLOWED_SYMBOLS = [
     # capacity fidelity
     "su2", "cw", "M_mom", "Ir", "Nq", "Ngamma", "K", "n_slices",
     "e_max", "e_min", "S_limit", "theta_wall",
+    # stress states (triaxial, direct shear, Mohr circle)
+    "sigma_1", "sigma_3", "sigma_d", "u_pore", "sigma_n", "tau_f",
 ]
 
 FRAME_SYSTEM = """You are the problem analyst of GeoTutor, a geotechnical
@@ -121,6 +123,12 @@ Rules:
   collide with the compression index), LL/PL/PI = Atterberg limits in %%.
   Qualitative fines behaviour (dilatancy, dry strength, toughness) is
   text: record it in assumptions_made verbatim.
+- Stress states (triaxial, direct shear, Mohr circle): sigma_3 = cell or
+  confining pressure, sigma_1 = major principal stress, sigma_d =
+  deviator stress at failure, u_pore = pore water pressure, sigma_n =
+  normal stress on a plane, tau_f = shear stress at failure. A triaxial
+  or shear-strength problem is NOT a phase-relations problem: set domain
+  "other" for these.
 - Capacity fidelity: su2 = undrained strength of a SECOND layer or at the
   pile tip when it differs from the shaft average su, cw = wall adhesion,
   M_mom = applied moment (kN*m), Ir = rigidity index when stated,
@@ -220,6 +228,12 @@ _DOMAIN_MARKERS = [
      "the problem asks for a soil classification"),
 ]
 
+# a shear-strength stress-state problem misread as phase relations gets
+# rerouted to the general method; applied ONLY on that misread so a
+# footing problem citing triaxial-derived parameters is untouched
+_STRESS_STATE_RE = re.compile(r"triaxial|direct shear|shear box|mohr",
+                              re.IGNORECASE)
+
 
 def validate_frame(frame: dict, problem_text: str) -> tuple[list[str], list[str], dict]:
     violations, repairs = [], []
@@ -233,6 +247,12 @@ def validate_frame(frame: dict, problem_text: str) -> tuple[list[str], list[str]
                 repairs.append(f"domain corrected to {dom}: {why}")
                 f["domain"] = dom
             break
+
+    if f.get("domain") == "soil_basics" and \
+            _STRESS_STATE_RE.search(problem_text):
+        f["domain"] = "other"
+        repairs.append("stress-state problem misread as phase relations: "
+                       "routed to the general method")
 
     # clay loaded quickly must be undrained
     if f.get("soil_type") == "clay" and _SHORT_TERM_RE.search(problem_text):

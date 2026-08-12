@@ -1004,16 +1004,25 @@ def _swedish_slices(frame, givens, add, problem_text):
         dev = abs(chk["FS"] - ref) / max(abs(ref), 1e-9)
         agree = ("It agrees within "
                  if dev <= 0.05 else "It DIFFERS by more than 5 % from ")
-        add("explain", "Independent check: Spencer's method", "results",
+        mp_tex = ""
+        mp_line = ""
+        if chk.get("FS_mp"):
+            mp_tex = (f";\\quad F_s = {display_round(chk['FS_mp'], 4)}\\ "
+                      "\\text{(Morgenstern-Price)}")
+            mp_line = (" Morgenstern and Price, with its own interslice "
+                       "force function, lands at "
+                       f"{display_round(chk['FS_mp'], 4)}: two rigorous "
+                       "methods bracketing the answer independently.")
+        add("explain", "Independent check: complete equilibrium", "results",
             tex=f"F_s = {display_round(chk['FS'], 4)}\\ "
-                "\\text{(complete equilibrium)}",
+                "\\text{(Spencer)}" + mp_tex,
             narration="Spencer's method satisfies every equilibrium "
                       "equation at once, at the cost of an iteration that "
                       "no longer reads like a spreadsheet. It is computed "
                       "here by an independent engine as a check, not as a "
                       f"hand method. {agree}"
                       f"{display_round(dev * 100, 2)} % of the value "
-                      "carried forward.",
+                      f"carried forward.{mp_line}",
             augmented=True,
             provenance=[{"symbol": "Fs (Spencer)",
                          "value": round(chk["FS"], 4),

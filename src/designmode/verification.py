@@ -72,8 +72,17 @@ def spencer_check(slices, circle, our_oms_fs):
         ok, r = _XS.spencer(df)
         if not ok:
             return {"declined": f"Spencer did not converge: {r}"}
-        return {"FS": float(r["FS"]),
-                "engine": f"xslope {XSLOPE_VERSION} (Apache-2.0)"}
+        out = {"FS": float(r["FS"]),
+               "engine": f"xslope {XSLOPE_VERSION} (Apache-2.0)"}
+        # second independent check: Morgenstern-Price on the same table
+        # (best-effort; Spencer alone already stands if it declines)
+        try:
+            ok2, r2 = _XS.mprice(df)
+            if ok2:
+                out["FS_mp"] = float(r2["FS"])
+        except Exception:
+            pass
+        return out
     except Exception as e:                            # pragma: no cover
         return {"declined": f"verification error: {str(e)[:80]}"}
 

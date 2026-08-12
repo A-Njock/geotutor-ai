@@ -96,6 +96,9 @@ SYMBOL_FAMILY = {
     "Ngamma": "dimensionless", "K": "dimensionless",
     "n_slices": "dimensionless", "S_limit": "length",
     "theta_wall": "angle",
+    # stress states
+    "sigma_1": "stress", "sigma_3": "stress", "sigma_d": "stress",
+    "u_pore": "stress", "sigma_n": "stress", "tau_f": "stress",
 }
 
 # unit spellings that pint does not accept out of the box

@@ -165,7 +165,9 @@ def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
 
 def _cue(text):
     t = text.lower()
-    if re.search(r"organic|odou?r|dark", t):
+    # "dark" alone is a routine color descriptor, never organic evidence
+    if re.search(r"\borganic\b|\bpeat\b|\bhumus\b|"
+                 r"odou?r[^.]{0,30}organic|organic[^.]{0,30}odou?r", t):
         return "O", ("the description mentions organic matter, odor or a "
                      "dark color")
     if re.search(r"high\s+dry\s+strength|no\s+dilatancy", t):
