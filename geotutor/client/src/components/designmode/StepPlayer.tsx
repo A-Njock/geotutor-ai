@@ -11,6 +11,8 @@ import { PileFigure } from "./PileFigure";
 import { SheetPileFigure, CantileverWallFigure, WallThrustFigure } from "./WallFigure";
 import { CircleSlopeFigure } from "./CircleSlopeFigure";
 import { ConsolidationFigure } from "./ConsolidationFigure";
+import { ClassificationFigure } from "./ClassificationFigure";
+import { PermeabilityFigure } from "./PermeabilityFigure";
 import { activeNotes, compareOp } from "./figShared";
 
 // one router: every domain gets its own parametric figure component
@@ -36,6 +38,10 @@ function DesignFigure({ figure, steps, current }: {
       return <WallThrustFigure params={figure} steps={steps} current={current} />;
     case "consolidation":
       return <ConsolidationFigure params={figure} steps={steps} current={current} />;
+    case "classification":
+      return <ClassificationFigure params={figure} steps={steps} current={current} />;
+    case "permeability":
+      return <PermeabilityFigure params={figure} steps={steps} current={current} />;
     case "none":
       // general reasoning mode has no parametric drawing; the steps
       // carry the whole story
