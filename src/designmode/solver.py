@@ -180,18 +180,11 @@ def _solve_impl(problem_text: str, analysis: dict, answers: dict | None = None) 
     methods, rejections = match_formulas(frame, givens)
     methods = _filter_requested_method(frame, methods, problem_text)
     if not methods and not eccentric:
-        if domain != "shallow_foundation":
-            nice = domain.replace("_", " ")
-            art = "an" if nice[0] in "aeiou" else "a"
-            msg = (f"This was read as {art} {nice} problem. GeoTutor Design "
-                   "does not cover that domain yet.")
-        else:
-            reasons = list(dict.fromkeys(r.split(": ", 1)[-1]
-                                         for r in rejections))
-            msg = ("No method in the registry covers this problem as framed"
-                   + (": " + "; ".join(reasons[:2]) if reasons else "")
-                   + ".")
-        return {"ok": False, "message": msg}
+        # no dedicated method covers it: the general reasoning mode plans
+        # the method (LLM) and Python still computes every number
+        from .domains import generic
+        return _solve_domain(domain, problem_text, frame, givens,
+                             analysis, notes, builder=generic.build)
 
     shape = frame.get("footing_shape") or "strip"
     givens.setdefault("Df", 0.0)
@@ -1051,7 +1044,8 @@ def _effective_area_chain(frame, givens, bindings, add):
 # dispatcher for non-footing domains
 # ---------------------------------------------------------------------------
 
-def _solve_domain(domain, problem_text, frame, givens, analysis, notes):
+def _solve_domain(domain, problem_text, frame, givens, analysis, notes,
+                  builder=None):
     audit = {"repairs": analysis.get("repairs", []) + notes,
              "skeptic": analysis.get("skeptic"),
              "rejections": [], "recompute": [], "bounds": "enforced"}
@@ -1084,7 +1078,25 @@ def _solve_domain(domain, problem_text, frame, givens, analysis, notes):
         viz=[{"op": "show", "target": "figure"}])
     _phoon_advisory(givens, add)
 
-    out = DOMAIN_BUILDERS[domain](frame, givens, add, problem_text)
+    out = (builder or DOMAIN_BUILDERS[domain])(frame, givens, add,
+                                               problem_text)
+    if "error" in out and builder is None:
+        # the dedicated procedure declined; before giving up, let the
+        # general reasoning mode try, with the objection in front of it
+        # so it cannot paper over genuinely missing data
+        from .domains import generic
+        n_before = len(steps)
+        out2 = generic.build(
+            frame, givens, add,
+            problem_text + "\n\n[A dedicated procedure declined this "
+            "problem with: '" + out["error"] + "'. Produce a plan ONLY "
+            "if the problem statement genuinely contains everything the "
+            "standard method needs; otherwise feasible=false with the "
+            "missing list.]")
+        if "error" not in out2:
+            out = out2
+        else:
+            del steps[n_before:]   # discard the general-mode preamble
     if "error" in out:
         return {"ok": False, "message": out["error"]}
 

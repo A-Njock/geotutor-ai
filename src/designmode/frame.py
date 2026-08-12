@@ -47,10 +47,13 @@ Output:
   "in_scope": true when this is a geotechnical design problem; false otherwise,
   "domain": "shallow_foundation" | "pile_foundation" | "retaining_wall" |
             "consolidation" | "slope_stability" | "excavation" |
-            "soil_basics" | "other",
+            "soil_basics" | "permeability" | "soil_classification" | "other",
       (soil_basics = phase relations: unit weights, void ratio, porosity,
-       saturation from sample weight/volume/moisture data;
-       excavation = braced cuts, strut loads),
+       saturation from sample weights/volumes/moisture or lab masses;
+       excavation = braced cuts, strut loads;
+       permeability = permeameter tests, pumping tests, flow nets;
+       soil_classification = USCS/AASHTO/BS group symbol and name from
+       sieve fractions and Atterberg limits),
   "quantity_requested": subset of ["q_ult","q_all","Q_ult","Q_all"], what the
       problem actually asks for (q_* per unit area, Q_* total load),
   "analysis_type": "effective_stress" | "total_stress",
@@ -203,9 +206,18 @@ _DOMAIN_MARKERS = [
      "the problem is about slope stability"),
     (re.compile(r"coefficient of consolidation|degree of consolidation|"
                 r"\d+\s*(?:%|percent)\s*(?:of\s+)?consolidation|"
-                r"(?:time|how long|rate)[^.?]{0,60}consolidation",
+                r"(?:time|how long|rate)[^.?]{0,60}consolidation|"
+                r"consolidation settlement",
                 re.IGNORECASE), "consolidation",
-     "the problem asks about the time-rate of consolidation"),
+     "the problem asks about consolidation"),
+    (re.compile(r"permeab|permeameter|pumping test|flow net|"
+                r"coefficient of permeability|hydraulic conductivity",
+                re.IGNORECASE), "permeability",
+     "the problem is about permeability or seepage"),
+    (re.compile(r"classif(y|ication)|USCS|AASHTO|unified soil|"
+                r"group symbol|group name", re.IGNORECASE),
+     "soil_classification",
+     "the problem asks for a soil classification"),
 ]
 
 

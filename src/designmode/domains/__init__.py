@@ -8,7 +8,8 @@ domain. Every number a builder emits is computed here in full precision,
 never recalled from a model.
 """
 
-from . import basics, braced, consolidation, pile, retaining, slope
+from . import basics, braced, consolidation, permeability, pile, \
+    retaining, slope
 
 DOMAIN_BUILDERS = {
     "soil_basics": basics.build,
@@ -17,6 +18,7 @@ DOMAIN_BUILDERS = {
     "pile_foundation": pile.build,
     "retaining_wall": retaining.build,
     "consolidation": consolidation.build,
+    "permeability": permeability.build,
 }
 
 # label shown in the "Applicable" chip before solving
@@ -26,5 +28,15 @@ DOMAIN_METHOD_LABEL = {
     "excavation": "Peck apparent-pressure envelope",
     "pile_foundation": "Pile capacity and settlement",
     "retaining_wall": "Retaining structures",
-    "consolidation": "Terzaghi time-rate of consolidation",
+    "consolidation": "Consolidation",
+    "permeability": "Permeability and seepage",
+    "soil_classification": "Soil classification",
 }
+
+# classification lands from a parallel build; keep boot resilient until
+# the module is present, then it wires itself in
+try:
+    from . import classify
+    DOMAIN_BUILDERS["soil_classification"] = classify.build
+except ImportError:
+    pass

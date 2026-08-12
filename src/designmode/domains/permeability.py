@@ -17,7 +17,7 @@ _CONSTANT_RE = re.compile(r"constant[- ]head", re.IGNORECASE)
 _PUMP_RE = re.compile(
     r"pump|well|drawdown|aquifer", re.IGNORECASE)
 _NET_RE = re.compile(r"flow[- ]?net", re.IGNORECASE)
-_CONFINED_RE = re.compile(r"confined|artesian", re.IGNORECASE)
+_CONFINED_RE = re.compile(r"(?<!un)confined|artesian", re.IGNORECASE)
 
 # Observed permeabilities run from intact clay to clean gravel.
 _K_LOW, _K_HIGH = 1e-13, 1.0

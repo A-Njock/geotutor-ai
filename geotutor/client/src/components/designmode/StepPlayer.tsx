@@ -36,6 +36,10 @@ function DesignFigure({ figure, steps, current }: {
       return <WallThrustFigure params={figure} steps={steps} current={current} />;
     case "consolidation":
       return <ConsolidationFigure params={figure} steps={steps} current={current} />;
+    case "none":
+      // general reasoning mode has no parametric drawing; the steps
+      // carry the whole story
+      return null;
     case "circular_slope":
       return <CircleSlopeFigure params={figure} steps={steps} current={current} />;
     default:
