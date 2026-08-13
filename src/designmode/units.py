@@ -49,6 +49,7 @@ SYMBOL_FAMILY = {
     "V": "volume",
     "s": "length",                # strut spacing along the cut
     "dA": "length", "dB": "length", "dC": "length",
+    "dD": "length", "dE": "length",
     "sigma_all": "stress",
     "FS": "dimensionless", "Gs": "dimensionless", "w": "dimensionless",
     # piles

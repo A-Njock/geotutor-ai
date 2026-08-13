@@ -18,9 +18,17 @@ export function BracedCutFigure({
 }) {
   const hl = activeTargets(steps, current);
   const Hcut = (params.H as number) || 9;
-  const dA = (params.dA as number) ?? Hcut * 0.22;
-  const dB = (params.dB as number) ?? Hcut * 0.55;
-  const dC = (params.dC as number) ?? Hcut * 0.88;
+  // any strut count: the struts array wins; the legacy three keys remain
+  // the fallback for older saved sessions
+  const strutDepths: number[] = Array.isArray(params.struts)
+    ? (params.struts as number[])
+    : [
+        (params.dA as number) ?? Hcut * 0.22,
+        (params.dB as number) ?? Hcut * 0.55,
+        ...(params.dC != null ? [params.dC as number] : []),
+      ];
+  const NAMES = ["A", "B", "C", "D", "E"];
+  const dB = strutDepths[1] ?? Hcut * 0.55;
   const zTri = (params.z_tri as number) || 0;
   const isClay = params.envelope === "clay";
 
@@ -102,9 +110,7 @@ export function BracedCutFigure({
       {beamSeg(dB, Hcut, hl.has("beam_bot"), "bb")}
 
       {/* struts */}
-      {strut(dA, "A", "sa")}
-      {strut(dB, "B", "sb")}
-      {strut(dC, "C", "sc")}
+      {strutDepths.map((d, i) => strut(d, NAMES[i] ?? `S${i + 1}`, `s${i}`))}
 
       {/* apparent-pressure envelope */}
       <g opacity={hl.has("envelope") ? 1 : 0.45}>

@@ -16,6 +16,7 @@ ALLOWED_SYMBOLS = [
     "B", "L", "Df", "Dw", "H", "c", "c_prime", "su", "cu", "phi", "phi_prime",
     "gamma", "gamma_sat", "gamma_dry", "FS", "q_applied", "beta", "delta",
     "P", "z", "e_load", "V", "W", "w", "Gs", "s", "dA", "dB", "dC",
+    "dD", "dE",
     "sigma_all", "D", "Ep", "Es", "mu_s", "Qwp", "Qws", "L1", "L2",
     "x1", "x2", "x3", "x4", "x5", "alpha", "gamma_c", "gamma2", "phi2",
     "c2", "xc", "yc", "R", "ru", "sigma_c", "sigma_phi", "sigma_gamma",
@@ -79,8 +80,9 @@ Rules:
   thickness over bedrock; beta = slope angle (or slope face angle); for a
   sample, V = volume, W = weight, w = moisture content (unit "%%" when given
   as percent), Gs = specific gravity of solids; for a braced cut, H = cut
-  depth, B = cut width, dA/dB/dC = strut depths from the surface (top strut
-  = dA), s = horizontal strut spacing along the cut, sigma_all = allowable
+  depth, B = cut width, dA/dB/dC/dD/dE = strut depths from the surface in
+  order (top strut = dA; use as many as the problem has, two to five),
+  s = horizontal strut spacing along the cut, sigma_all = allowable
   bending stress of the steel.
 - Piles: L = pile length, D = pile width/diameter (convert mm to m? NO,
   copy as printed with its unit), phi/gamma = the upper soil layer the

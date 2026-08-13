@@ -126,6 +126,9 @@ _SIDE_RE = re.compile(r"side resistance|skin friction|shaft resistance|Q_?s\b",
                       re.IGNORECASE)
 _SETTLE_RE = re.compile(r"settlement", re.IGNORECASE)
 _ROUND_RE = re.compile(r"diameter|circular|round pile", re.IGNORECASE)
+_GROUP_RE = re.compile(r"\bgroup\b|block failure", re.IGNORECASE)
+_LAYOUT_RE = re.compile(r"(\d+)\s*(?:by|x|by a|×)\s*(\d+)",
+                        re.IGNORECASE)
 
 
 def _section(D, problem_text):
@@ -265,6 +268,78 @@ def _clay_alpha(frame, givens, add, problem_text):
         viz=[{"op": "compare", "methods": [
             {"method": "Point Qp", "q_ult": display_round(Qp)},
             {"method": "Shaft Qs", "q_ult": display_round(Qs)}]}])
+
+    # ---- pile GROUP: individual failure vs block failure ------------------
+    if _GROUP_RE.search(problem_text or ""):
+        m = _LAYOUT_RE.search(problem_text or "")
+        s_cc = givens.get("s")
+        if not m or s_cc is None:
+            return {"error": "The group check needs the layout (rows by "
+                             "columns, e.g. 3 by 3) and the centre-to-"
+                             "centre spacing s in addition to the single "
+                             "pile data."}
+        rows, cols = int(m.group(1)), int(m.group(2))
+        N = rows * cols
+        Bg = (cols - 1) * s_cc + D
+        Lg = (rows - 1) * s_cc + D
+        Q_ind = N * Qu
+        add("compute", "Individual failure: nine act alone" if N == 9
+            else f"Individual failure: {N} piles act alone", "group",
+            tex="Q_{g,ind} = N\\,Q_u",
+            sub=f"Q = ({N})({display_round(Qu)})",
+            result={"sym": "Qg_ind", "value": Q_ind, "unit": "kN",
+                    "display": f"{display_round(Q_ind)} kN"},
+            narration="If the piles are far enough apart, each mobilizes "
+                      "its own soil and the group is simply their sum.",
+            viz=[{"op": "highlight", "target": "shaft_arrows"}])
+        peri = 2.0 * (Bg + Lg)
+        Q_blk = su * peri * L + Nc * su_tip * Bg * Lg
+        add("compute", "Block failure: the group moves as one pier",
+            "group",
+            tex="Q_{g,blk} = \\bar s_u\\,2(B_g + L_g)\\,L + "
+                "N_c^*\\,s_{u,tip}\\,B_g L_g",
+            sub=(f"Q = ({su:g})({display_round(peri, 3)})({L:g}) + "
+                 f"({Nc:g})({su_tip:g})({display_round(Bg, 3)})"
+                 f"({display_round(Lg, 3)})"),
+            result={"sym": "Qg_blk", "value": Q_blk, "unit": "kN",
+                    "display": f"{display_round(Q_blk)} kN"},
+            narration="Closely spaced piles can drag the soil between "
+                      "them along and fail as a single big block: shear "
+                      "on the block's outside faces plus bearing under "
+                      "its full base. The block dimensions run from "
+                      "outside edge to outside edge.",
+            provenance=[{"symbol": "Bg x Lg",
+                         "value": f"{display_round(Bg, 3)} x "
+                                  f"{display_round(Lg, 3)} m",
+                         "means": "plan dimensions of the failing block",
+                         "source": "the standard block-failure check for "
+                                   "pile groups in clay (Das PFE)",
+                         "arguments": [f"{rows} x {cols} at "
+                                       f"{s_cc:g} m centres, D = {D:g} m"],
+                         "whyApplies": "the governing mechanism must be "
+                                       "checked, not assumed"}],
+            viz=[{"op": "highlight", "target": "tip"}])
+        Q_group = min(Q_ind, Q_blk)
+        governs = ("individual pile failure" if Q_ind <= Q_blk
+                   else "block failure")
+        add("conclude", "The smaller mechanism governs the group",
+            "results",
+            tex=(f"Q_g = \\min({display_round(Q_ind)},\\ "
+                 f"{display_round(Q_blk)}) = {display_round(Q_group)}"
+                 "\\ \\text{kN}"),
+            narration=f"The group fails by whichever mechanism gives way "
+                      f"first; here that is {governs}.",
+            viz=[{"op": "compare", "methods": [
+                {"method": "Individual", "q_ult": display_round(Q_ind)},
+                {"method": "Block", "q_ult": display_round(Q_blk)}]}])
+        conclusions = [
+            {"quantity": "Q_group", "value": display_round(Q_group),
+             "unit": "kN", "governing": governs},
+            {"quantity": "Q_single", "value": display_round(Qu),
+             "unit": "kN", "governing": "alpha method, one pile"},
+            {"quantity": "Q_block", "value": display_round(Q_blk),
+             "unit": "kN", "governing": "block mechanism"}] + [
+            c for c in conclusions if c["quantity"] == "Q_all"]
 
     return {
         "results": [
