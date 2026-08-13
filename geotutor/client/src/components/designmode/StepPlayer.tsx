@@ -13,6 +13,7 @@ import { CircleSlopeFigure } from "./CircleSlopeFigure";
 import { ConsolidationFigure } from "./ConsolidationFigure";
 import { ClassificationFigure } from "./ClassificationFigure";
 import { PermeabilityFigure } from "./PermeabilityFigure";
+import { CalcChainFigure } from "./CalcChainFigure";
 import { activeNotes, compareOp } from "./figShared";
 
 // one router: every domain gets its own parametric figure component
@@ -42,9 +43,10 @@ function DesignFigure({ figure, steps, current }: {
       return <ClassificationFigure params={figure} steps={steps} current={current} />;
     case "permeability":
       return <PermeabilityFigure params={figure} steps={steps} current={current} />;
+    case "calc_chain":
+      return <CalcChainFigure params={figure} steps={steps} current={current} />;
     case "none":
-      // general reasoning mode has no parametric drawing; the steps
-      // carry the whole story
+      // legacy general-mode solutions saved before the chain figure
       return null;
     case "circular_slope":
       return <CircleSlopeFigure params={figure} steps={steps} current={current} />;

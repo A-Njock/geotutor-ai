@@ -258,5 +258,15 @@ def build(frame: dict, givens: dict, add, problem_text: str) -> dict:
         "results": [],
         "conclusions": conclusions,
         "comparison": None,
-        "figure": {"template": "none"},
+        "figure": {
+            "template": "calc_chain",
+            "method": method,
+            "givens": [{"sym": k, "value": display_round(v)}
+                       for k, v in list(givens.items())[:10]],
+            "chain": [{"target": t, "value": display_round(v),
+                       "unit": u} for t, (v, u) in computed.items()],
+            "answer": {"quantity": conclusions[0]["quantity"],
+                       "value": conclusions[0]["value"],
+                       "unit": conclusions[0]["unit"]},
+        },
     }
