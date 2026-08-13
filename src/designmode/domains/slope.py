@@ -902,7 +902,13 @@ def _swedish_slices(frame, givens, add, problem_text):
                 "display": f"W₁ = {W1:g} kN/m"},
         viz=[{"op": "highlight", "target": "slice1"}])
 
-    oms = K.oms_fs(slices)
+    try:
+        oms = K.oms_fs(slices)
+    except ValueError as e:
+        return {"error": f"This trial circle cannot be analysed: {e}. "
+                         "Choose a circle that cuts a real slice of the "
+                         "slope, or let the critical circle be searched "
+                         "for."}
     Fs = oms["Fs"]
     if ru:
         fs_tex = ("F_s = \\tfrac{\\sum(c'l_i + (W_i\\cos\\alpha_i - "

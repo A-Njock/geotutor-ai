@@ -354,6 +354,12 @@ def oms_fs(slices):
     if den <= 0:
         raise ValueError("driving moment is not positive; the trial circle "
                          "does not describe a slide in this direction")
+    if num / den > 1.0e4:
+        # a sliver circle or degenerate discretization: almost no driving
+        # mass, so the quotient is not a factor of safety
+        raise ValueError("the trial circle encloses almost no driving "
+                         "mass; a factor of safety is not meaningful for "
+                         "this surface")
     return {"method": "oms", "Fs": num / den, "sum_res": num, "sum_drv": den,
             "n_negative_base": n_neg, "rows": rows}
 
@@ -386,6 +392,10 @@ def bishop_fs(slices, tol=1e-6, max_iter=100, fs0=None):
             fs = fs_new
             break
         fs = fs_new
+    if fs > 1.0e4:
+        raise ValueError("the trial circle encloses almost no driving "
+                         "mass; a factor of safety is not meaningful for "
+                         "this surface")
     return {"method": "bishop", "Fs": fs, "sum_drv": den,
             "iterations": history, "converged": converged}
 

@@ -422,7 +422,10 @@ def _lateral_thrust(frame, givens, add, problem_text):
         else:
             zc = max(0.0, -s_top / (gamma * K)) if s_top < 0 else 0.0
             # thrust ignoring the tension zone entirely (after cracks open)
-            P_crack = 0.5 * s_base * (H - zc) if s_base > 0 else 0.0
+            P_crack = 0.5 * s_base * (H - zc) \
+                if (s_base > 0 and zc < H) else 0.0
+            if zc >= H:
+                zc = H  # the whole height is in tension: no thrust at all
             add("compute", "Depth of the tension crack", "setup",
                 tex="z_c = \\tfrac{K_c\\,c}{\\gamma K} - \\tfrac{q}"
                     "{\\gamma}",
@@ -434,7 +437,7 @@ def _lateral_thrust(frame, givens, add, problem_text):
                           "cracks open there instead, so that zone "
                           "contributes no push.",
                 viz=[{"op": "highlight", "target": "crack"}])
-            zbar = (H - zc) / 3.0
+            zbar = max(0.0, (H - zc) / 3.0)
             add("compute", "Active thrust after the cracks open", "results",
                 tex="P_a = \\tfrac{1}{2}\\,\\sigma_{base}\\,(H - z_c)",
                 sub=(f"P_a = \\tfrac{{1}}{{2}}({display_round(s_base)})"

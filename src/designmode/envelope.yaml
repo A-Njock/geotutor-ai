@@ -11,8 +11,8 @@
 # error dict at the deterministic layer, or be retried by the pipeline in
 # the general reasoning mode (Tier 2) with its warning label; the
 # per-domain `outside_behaviour` records which. "tier2" means: the builder
-# returns {"error": ...} and solver.py hands the problem to the generic
-# planner; "refuse" means the error is terminal (physically invalid input
+# returns {"error": ...} and the dispatch layer hands the problem to the
+# generic planner; "refuse" means the error is terminal (invalid input
 # or data that no method here can use).
 #
 # Units: m, kN/m^3, kPa, degrees throughout (kernel contract).
@@ -133,17 +133,18 @@ retaining_wall:
   layers: 1 backfill layer, plus the moist/saturated split at Dw when a
     water table sits inside the wall height (gamma_sat then required)
   water:
-    - Dw in [0, H): hydrostatic wedge added below the table
-    - Dw >= H treated as dry
-    - cohesive backfill with water inside H: refuses (one effect at a time)
+    - "Dw in [0, H): hydrostatic wedge added below the table"
+    - "Dw >= H treated as dry"
+    - "cohesive backfill with water inside H: refuses (one effect at a
+      time)"
   loading:
     - uniform surcharge q on the backfill surface
     - active or passive (passive picked from the word in the text)
-    - wall friction delta and battered back: Coulomb wedge, granular
-      active only
-    - cohesive backfill: level surface only (sloping + c refuses);
+    - "wall friction delta and battered back: Coulomb wedge, granular
+      active only"
+    - "cohesive backfill: level surface only (sloping + c refuses);
       tension crack handled, thrust floored at 0 when the crack depth
-      reaches the wall height
+      reaches the wall height"
   sheet_pile: cantilever in granular soil, L1 above water and L2 below,
     full quartic in L4 solved numerically
   cantilever_wall: needs the full x1..x5 geometry plus both soils
@@ -159,12 +160,12 @@ excavation:
   layers: 1 soil (sand with phi > 0, or clay with su and phi <= 0.5)
   water: none
   loading:
-    - Peck apparent-pressure envelopes: sand 0.65 gamma H Ka; clay
-      gamma H - 4c with the 0.3 gamma H floor; stiff clay 0.3 gamma H
+    - "Peck apparent-pressure envelopes: sand 0.65 gamma H Ka; clay
+      gamma H - 4c with the 0.3 gamma H floor; stiff clay 0.3 gamma H"
     - hinge-at-middle-strut beam statics, symmetric or unsymmetric layouts
     - section moduli when sigma_all is given (clay)
-  outside_behaviour: tier2 (two-strut or four-strut layouts, layered
-    profiles, water: builder refuses with the missing list)
+  outside_behaviour: "tier2 (two-strut or four-strut layouts, layered
+    profiles, water: builder refuses with the missing list)"
 
 consolidation:
   builder: src/designmode/domains/consolidation.py
