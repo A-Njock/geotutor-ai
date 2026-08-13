@@ -307,10 +307,16 @@ def _culmann(frame, givens, add, problem_text):
         phid = math.atan(math.tan(p_r) / F)
         return c / _culmann_cd(gamma, H, b_r, phid) - F
 
-    lo, hi = 0.05, 0.06
-    while g(hi) > 0 and hi < 100.0:
+    # the root always lies ABOVE the friction-only floor tan(phi)/tan(beta):
+    # at that floor the developed friction angle reaches the slope angle,
+    # the critical plane merges with the face and the cohesion demand
+    # vanishes, so g -> +infinity there; brackets below it are meaningless
+    f_min = math.tan(p_r) / math.tan(b_r) if p_r > 0 else 0.0
+    lo = max(f_min * 1.000001, 1e-4)
+    hi = max(lo * 1.2, lo + 0.05)
+    while g(hi) > 0 and hi < 1000.0:
         hi *= 1.6
-    for _ in range(120):
+    for _ in range(200):
         mid = (lo + hi) / 2.0
         if g(mid) > 0:
             lo = mid

@@ -1,0 +1,227 @@
+# GeoTutor capability envelope (assurance plan, point 1).
+#
+# One entry per domain: the geometry parameters and ranges the test suites
+# actually exercise, the layer counts and water conditions the builders
+# GENUINELY support (read from the builder code, not from wishes), the
+# loading types, and what happens outside the envelope.
+#
+# Everything inside these ranges is exercised by tests/test_properties.py
+# (physics invariants over random draws) and tests/test_adversarial.py
+# (edge probes). Everything outside must either refuse with an honest
+# error dict at the deterministic layer, or be retried by the pipeline in
+# the general reasoning mode (Tier 2) with its warning label; the
+# per-domain `outside_behaviour` records which. "tier2" means: the builder
+# returns {"error": ...} and solver.py hands the problem to the generic
+# planner; "refuse" means the error is terminal (physically invalid input
+# or data that no method here can use).
+#
+# Units: m, kN/m^3, kPa, degrees throughout (kernel contract).
+
+meta:
+  written: 2026-08-12
+  tested_by:
+    - tests/test_properties.py
+    - tests/test_adversarial.py
+  note: >
+    Ranges marked "tested" are the random-draw windows of the property
+    suite. Builders often accept values beyond them without crashing
+    (verified by the adversarial suite for the listed extremes), but only
+    the tested window carries the invariant guarantee.
+
+soil_basics:
+  builder: src/designmode/domains/basics.py (build)
+  geometry:
+    e_void: [0.3, 1.5]        # tested; dimensionless void ratio
+    Gs: [2.5, 2.8]            # tested
+    S_r: [0.05, 1.0]          # tested; S > 1 implied by w,Gs,e refuses
+    w: [0.0, 0.6]             # fraction; values > 1 auto-read as percent
+    V: "> 0 m^3"              # any positive sample volume
+    W: "> 0 kN"
+  routes:
+    - from (V, W, w, Gs): full six-quantity chain
+    - from (e_void, Gs, S_r or w): unit weights on a unit-solids block
+    - from raw lab masses (tin weighings, specimen D and L, wax coat,
+      measured densities, e_max/e_min density index)
+  layers: not applicable (single homogeneous sample)
+  water: not applicable (saturation S is itself the variable)
+  loading: none
+  conventions:
+    - w, S_r, and percent keys given above 1.0 are re-read as percentages
+      with a labelled assumption step
+  outside_behaviour: tier2
+  invalid_input: refuse (S > 1 physically impossible; missing data listed
+    by name in the error message)
+
+slope_stability:
+  builder: src/designmode/domains/slope.py + src/designmode/slope_kernel.py
+  geometry:
+    H: [1, 60]                # tested window; H = 0.1 and 200 probed, no crash
+    beta_deg: [10, 75]        # tested; 0.5 and 89.5 probed, no crash
+    trial_circle: "xc, yc free; R from the toe contract hypot(xc, yc)
+      or explicit; non-toe circles supported by the kernel"
+    n_slices: [10, 100]       # tested at 30; n = 1 returns an absurdly
+                              # large Fs instead of refusing (recorded
+                              # xfail), n = 500 fine
+  layers: >
+    The kernel genuinely supports layered profiles: a list of layers, top
+    to bottom, each with c, phi, gamma, optional gamma_sat, optional
+    per-layer pore-pressure mode (u_mode), and a polyline bottom; the last
+    bottom may be None. The narrated chains in domains/slope.py drive it
+    with single-layer simple profiles (toe at origin, plane face,
+    horizontal crest); layered narration is not wired yet.
+  water:
+    - none
+    - ru (global value or per layer)
+    - piezo (piezometric polyline, optional phreatic cos^2 correction)
+  loading: gravity only (no seismic coefficient, no crest surcharge)
+  methods: OMS (Fellenius), Bishop simplified (with m_alpha >= 0.05 guard),
+    Culmann plane wedge, infinite slope, deterministic critical-circle
+    grid search, Spencer cross-check elsewhere in the pipeline
+  outside_behaviour: tier2 (kernel raises named ValueError, builder
+    returns an error dict; the pipeline may retry generically)
+
+shallow_foundation:
+  # not in the original eight-key list but the frame declares it and the
+  # factor layer is tested here, so its truth is recorded too
+  builder: registry (src/designmode/registry/shallow_foundations.yaml)
+    + src/designmode/factors.py, executed by compute.py
+  geometry:
+    B: [0.3, 10]              # m
+    Df_over_B: [0, 2]         # Terzaghi applicability capped at Df <= B
+    phi: [0, 50]              # factor functions tested on [0, 49.999]
+    shapes: [strip, square, rectangular, circular]
+  layers: 1 bearing layer (gamma_eff and q_surcharge prepared by the
+    water-table stage before any formula runs)
+  water: Dw at any depth (above base, between base and B below, deeper)
+  loading:
+    - vertical central
+    - eccentric (effective area; e/B > 1/6 refuses)
+    - moment (converted to eccentricity)
+    - inclined loads excluded by applicability flags
+  methods: Terzaghi, Meyerhof, Hansen, Vesic, Skempton (undrained)
+  outside_behaviour: refuse (registry matcher rejects formulas whose
+    applicability the declared frame does not satisfy)
+
+pile_foundation:
+  builder: src/designmode/domains/pile.py
+  geometry:
+    L: "> 0 m"
+    D: "(0, 3] m; a value above 3 is re-read as millimetres with a
+      labelled assumption"
+    L_over_D: [0, 65]         # Coyle-Castello Nq* chart span; K chart 0-36;
+                              # clamped at the outermost curves, disclosed
+  layers: 1 shaft layer above the tip (optional phi2 for the tip layer)
+  water: none modelled (tip stress q' = gamma * L, dry effective stress)
+  loading: axial compression only
+  methods:
+    point: Meyerhof Nq* (phi 20-45 table, clamped), Coyle-Castello chart
+      (phi 30-42; the 42-degree curve extrapolated beyond the published
+      chart, disclosed in provenance), Vesic
+    shaft_sand: K from problem text or 1.3 default, delta = 0.8 phi,
+      critical depth L' = 15 D
+    shaft_clay: alpha method; alpha must be given (refuses otherwise)
+    settlement: elastic, needs Qwp/Qws split
+  outside_behaviour: tier2
+
+retaining_wall:
+  builder: src/designmode/domains/retaining.py
+  geometry:
+    H: [0.5, 15]              # tested; H = 0.01 probed, no crash
+    alpha_backfill_deg: "[0, phi); alpha = phi exactly still evaluates
+      (Rankine root goes to 0), alpha > phi is a math-domain refusal"
+    theta_wall_deg: "battered back via Coulomb, granular active only"
+  layers: 1 backfill layer, plus the moist/saturated split at Dw when a
+    water table sits inside the wall height (gamma_sat then required)
+  water:
+    - Dw in [0, H): hydrostatic wedge added below the table
+    - Dw >= H treated as dry
+    - cohesive backfill with water inside H: refuses (one effect at a time)
+  loading:
+    - uniform surcharge q on the backfill surface
+    - active or passive (passive picked from the word in the text)
+    - wall friction delta and battered back: Coulomb wedge, granular
+      active only
+    - cohesive backfill: level surface only (sloping + c refuses);
+      tension crack handled, thrust floored at 0 when the crack depth
+      reaches the wall height
+  sheet_pile: cantilever in granular soil, L1 above water and L2 below,
+    full quartic in L4 solved numerically
+  cantilever_wall: needs the full x1..x5 geometry plus both soils
+    (gamma2, phi2, c2, gamma_c); refuses with the missing list otherwise
+  outside_behaviour: tier2
+
+excavation:
+  builder: src/designmode/domains/braced.py
+  geometry:
+    H: "> 0 m cut depth"
+    strut_depths: exactly three distinct depths dA, dB, dC
+    s: "> 0 m horizontal strut spacing"
+  layers: 1 soil (sand with phi > 0, or clay with su and phi <= 0.5)
+  water: none
+  loading:
+    - Peck apparent-pressure envelopes: sand 0.65 gamma H Ka; clay
+      gamma H - 4c with the 0.3 gamma H floor; stiff clay 0.3 gamma H
+    - hinge-at-middle-strut beam statics, symmetric or unsymmetric layouts
+    - section moduli when sigma_all is given (clay)
+  outside_behaviour: tier2 (two-strut or four-strut layouts, layered
+    profiles, water: builder refuses with the missing list)
+
+consolidation:
+  builder: src/designmode/domains/consolidation.py
+  geometry:
+    H: [0.5, 20]              # clay layer thickness, tested window
+    U: "(0, 1) exclusive; U = 1 refuses (infinite time); U = 0.999 fine"
+    cv: "> 0 m^2/year (or rebuilt from k and mv)"
+  layers: 1 clay layer
+  water: implicit (saturated clay); drainage must be stated in words,
+    single or double, else the builder refuses and asks
+  loading:
+    - time to a stated U (default route)
+    - settlement from Cc/Cr/OCR indices or from mv
+    - lab-to-field time scaling at equal U (oedometer doubly drained by
+      default, single drainage honoured when stated)
+    - inverse: U reached after a stated time
+  outside_behaviour: tier2
+  invalid_input: refuse (U >= 1)
+
+permeability:
+  builder: src/designmode/domains/permeability.py
+  geometry:
+    D_s, L_s: "> 0 m specimen dimensions"
+    h1, h2: "falling head requires h1 > h2; h1 = h2 refuses (no division
+      crash)"
+    r1, r2: "pumping requires r2 > r1; equality refuses"
+    hw1, hw2: "pumping requires hw2 > hw1; equality refuses"
+  layers: 1 (homogeneous specimen or aquifer)
+  water: the test fluid itself; confined pumping needs the aquifer
+    thickness b
+  loading:
+    - falling head, constant head, pumping (Dupuit unconfined or
+      confined), flow net q = k H Nf/Nd (k must be given)
+  sanity: computed k outside [1e-13, 1] m/s draws a warning step, not a
+    refusal
+  outside_behaviour: tier2
+  invalid_input: refuse (non-falling head, inverted drawdown, r2 <= r1)
+
+soil_classification:
+  builder: src/designmode/domains/classify.py
+  geometry:
+    P200: [0, 100]            # outside [0, 100] refuses
+    P4: [P200, 100]           # P4 < P200 refuses
+    LL: [0, 120]
+    PL: [0, LL]
+    Cu, Cz: optional, or derived from D10, D30, D60
+  layers: not applicable
+  water: not applicable
+  loading: none
+  systems: USCS (ASTM D2487, default), AASHTO M145, BS 5930
+  conventions:
+    - percent keys given in (0, 2] are re-read as percentages
+    - qualitative fines cues (dilatancy, dry strength, organic wording)
+      stand in for missing Atterberg limits, labelled as assumptions
+  totality: 1000-draw random sweep in test_properties.py; build() never
+    raises, always a group symbol or an honest error dict; USCS symbols
+    match ^[A-Z]{2}(-[A-Z]{2})?$
+  outside_behaviour: refuse (missing gradation or plasticity data is
+    named in the error; nothing to hand to Tier 2 that a human should
+    trust)
